@@ -103,10 +103,22 @@ describe('Open-Meteo geocoding', () => {
     ]);
   });
 
-  it('returns an empty result list when Open-Meteo omits results', async () => {
+  it('rejects a response without an explicit results list', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({})));
 
-    await expect(searchCities('Nenhum lugar')).resolves.toEqual([]);
+    await expect(searchCities('Nenhum lugar')).rejects.toBeInstanceOf(WeatherServiceError);
+  });
+
+  it('accepts an explicit empty geocoding result list', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(geocodingResponse([])));
+
+    await expect(searchCities('Lugar inexistente')).resolves.toEqual([]);
+  });
+
+  it('rejects null as a geocoding result list', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ results: null })));
+
+    await expect(searchCities('Lugar inexistente')).rejects.toBeInstanceOf(WeatherServiceError);
   });
 
   it('rejects malformed city records instead of treating them as no results', async () => {
@@ -125,7 +137,9 @@ describe('Open-Meteo geocoding', () => {
     });
 
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')));
-    await expect(searchCities('Recife')).rejects.toThrow('Falha de rede.');
+    await expect(searchCities('Recife')).rejects.toThrow(
+      'Não foi possível conectar ao serviço Open-Meteo.',
+    );
 
     vi.stubGlobal(
       'fetch',
@@ -191,12 +205,54 @@ describe('Open-Meteo forecast', () => {
     await expect(getWeather(cityFixture)).rejects.toThrow('A previsão recebida está incompleta.');
   });
 
+  it('rejects missing, null, and invalid essential forecast values', async () => {
+    const invalidPayloads: Array<(payload: Record<string, unknown>) => void> = [
+      (payload) => {
+        (payload.current as Record<string, unknown>).temperature_2m = null;
+      },
+      (payload) => {
+        delete (payload.current as Record<string, unknown>).relative_humidity_2m;
+      },
+      (payload) => {
+        (payload.current as Record<string, unknown>).wind_speed_10m = -1;
+      },
+      (payload) => {
+        (payload.daily as Record<string, unknown>).time = [
+          '2026-10-29',
+          null,
+          '2026-10-31',
+          '2026-11-01',
+          '2026-11-02',
+        ];
+      },
+      (payload) => {
+        (payload.daily as Record<string, unknown>).weather_code = [0, 2, null, 61, 0];
+      },
+      (payload) => {
+        (payload.daily as Record<string, unknown>).temperature_2m_min = [17, 18, 19, 16, null];
+      },
+      (payload) => {
+        delete (payload.daily as Record<string, unknown>).temperature_2m_max;
+      },
+    ];
+
+    for (const invalidate of invalidPayloads) {
+      const payload = structuredClone(forecastResponse());
+      invalidate(payload);
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(payload)));
+
+      await expect(getWeather(cityFixture)).rejects.toBeInstanceOf(WeatherServiceError);
+    }
+  });
+
   it('reports forecast HTTP, network and JSON errors', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({}, 502)));
     await expect(getWeather(cityFixture)).rejects.toThrow('HTTP 502');
 
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')));
-    await expect(getWeather(cityFixture)).rejects.toThrow('Falha de rede.');
+    await expect(getWeather(cityFixture)).rejects.toThrow(
+      'Não foi possível conectar ao serviço Open-Meteo.',
+    );
 
     vi.stubGlobal(
       'fetch',
@@ -254,7 +310,7 @@ describe('Open-Meteo forecast', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const request = fetchWithTimeout('https://example.test');
-    const assertion = expect(request).rejects.toThrow('A requisição demorou demais.');
+    const assertion = expect(request).rejects.toThrow('tempo limite de 10 segundos');
     await vi.advanceTimersByTimeAsync(10_000);
     await assertion;
     expect(vi.getTimerCount()).toBe(0);
@@ -265,6 +321,31 @@ describe('Open-Meteo forecast', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
 
     await expect(fetchWithTimeout('https://example.test')).resolves.toMatchObject({ status: 204 });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('keeps the timeout active while reading the response body', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn((_url: string, init?: RequestInit) =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener(
+              'abort',
+              () => reject(new DOMException('Aborted', 'AbortError')),
+              { once: true },
+            );
+          }),
+      } as Response),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const request = searchCities('Recife');
+    const assertion = expect(request).rejects.toThrow('tempo limite de 10 segundos');
+    await vi.advanceTimersByTimeAsync(10_000);
+    await assertion;
     expect(vi.getTimerCount()).toBe(0);
   });
 });

@@ -168,7 +168,7 @@ Cada nova busca deve invalidar ou cancelar a resposta anterior para que um resul
 - Conferir a resposta real do provedor durante a implementação. Se `forecast_days=5` não garantir a data local atual no contexto de uma chamada específica, ajustar a solicitação com base no contrato documentado da API; o critério invariável é hoje e os quatro dias seguintes no fuso do local.
 - Traduzir `weather_code` por tabela baseada nos códigos WMO documentados. Código desconhecido deve resultar em rótulo genérico em pt-BR, não em falha de renderização.
 
-Usar timeout de 10 segundos; converter cancelamento por timeout para “A requisição demorou demais.” e falha de rede para “Falha de rede.”. A implementação deve confirmar limites de uso e obrigações de atribuição vigentes antes da publicação (NFR-07 e risco da spec). Nenhuma chave secreta é necessária.
+Usar timeout de 10 segundos para toda a operação de rede, incluindo a leitura do JSON. Informar o limite e orientar a pessoa a verificar a conexão; falhas de rede devem distinguir-se de erros HTTP e de respostas inválidas. A implementação deve confirmar limites de uso e obrigações de atribuição vigentes antes da publicação (NFR-07 e risco da spec). Nenhuma chave secreta é necessária.
 
 ## State Management
 
@@ -213,7 +213,7 @@ Mensagens visíveis devem ser pt-BR, com rótulos e anúncios acessíveis. Erro 
 | Dependência externa sem API key | Simplifica configuração, mas disponibilidade, limites e termos são externos; tratar falhas, definir timeout e confirmar atribuição/uso antes do lançamento (NFR-07). |
 | Países e cobertura não definidos | Não presumir compatibilidade universal dos dados. Aprovar países suportados e cobertura antes de fechar critérios de produção; a validação visual deve cobrir 320 px e desktop conforme AC-15 (NFR-02 e perguntas em aberto da spec). |
 | Estado apenas em memória | Evita persistência não solicitada e mantém escopo simples; unidade volta a Celsius ao reiniciar a sessão. Persistência local continua uma decisão em aberto (FR-09, NFR-08). |
-| Atualização e desempenho sem metas | Plano não define cache, atualização automática, timeout numérico ou SLO sem requisitos; determinar política e metas antes de declarar prontidão de produção (NFR-06 e perguntas em aberto da spec). |
+| Atualização e desempenho sem metas | O timeout operacional de rede está definido em 10 segundos; cache, atualização automática e SLO continuam sem definição, conforme NFR-06 e perguntas em aberto da spec. |
 | Acessibilidade sem padrão/meta aprovados | Teclado, semântica, rótulos e foco visível são requisitos desde a implementação; conformidade formal e metas de contraste precisam ser decididas (NFR-03). |
 | Estética carregada prejudica leitura ou uso móvel | Limitar ornamentos ao tratamento visual; verificar legibilidade, controles e fluxo de teclado em 320 px e desktop. A direção exige cores fortes, mas não sobrepõe conteúdo, foco ou responsividade (US-05, AC-12 a AC-16, NFR-09). |
 | Dependência de animação ou recurso externo | Preferir decoração estática CSS e fontes locais; se houver movimento, respeitar `prefers-reduced-motion`. Sem imagens de terceiros e sem nova dependência (AC-13, AC-16, NFR-09). |

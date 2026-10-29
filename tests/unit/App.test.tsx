@@ -108,13 +108,15 @@ describe('App integration', () => {
     const fetchMock = vi
       .fn()
       .mockRejectedValueOnce(new TypeError('offline'))
-      .mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
+      .mockResolvedValueOnce(new Response(JSON.stringify({ results: [] }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
     render(<App />);
 
     await user.type(screen.getByRole('searchbox', { name: 'Buscar cidade' }), 'Recife');
     await user.click(screen.getByRole('button', { name: 'Buscar' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Falha de rede.');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível conectar ao serviço Open-Meteo.',
+    );
 
     await user.click(screen.getByRole('button', { name: 'Tentar novamente' }));
     await waitFor(() =>

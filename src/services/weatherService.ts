@@ -9,6 +9,10 @@ import type {
 const GEOCODING_URL = 'https://geocoding-api.open-meteo.com/v1/search';
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
 const REQUEST_TIMEOUT_MS = 10_000;
+const TIMEOUT_MESSAGE =
+  'A requisição excedeu o tempo limite de 10 segundos. Verifique sua conexão e tente novamente.';
+const NETWORK_MESSAGE =
+  'Não foi possível conectar ao serviço Open-Meteo. Verifique sua conexão e tente novamente.';
 
 export class WeatherServiceError extends Error {
   constructor(message: string) {
@@ -17,25 +21,34 @@ export class WeatherServiceError extends Error {
   }
 }
 
-export async function fetchWithTimeout(input: string, init?: RequestInit): Promise<Response> {
+function isAbortError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    error.name === 'AbortError'
+  );
+}
+
+async function withRequestTimeout<T>(
+  request: (signal: AbortSignal) => Promise<T>,
+): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    return await fetch(input, { ...init, signal: controller.signal });
+    return await request(controller.signal);
   } catch (error: unknown) {
-    if (
-      typeof error === 'object' &&
-      error !== null &&
-      'name' in error &&
-      error.name === 'AbortError'
-    ) {
-      throw new WeatherServiceError('A requisição demorou demais.');
-    }
-    throw new WeatherServiceError('Falha de rede.');
+    if (error instanceof WeatherServiceError) throw error;
+    if (isAbortError(error)) throw new WeatherServiceError(TIMEOUT_MESSAGE);
+    throw new WeatherServiceError(NETWORK_MESSAGE);
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export function fetchWithTimeout(input: string, init?: RequestInit): Promise<Response> {
+  return withRequestTimeout((signal) => fetch(input, { ...init, signal }));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -47,18 +60,21 @@ function requiredNumber(value: unknown): value is number {
 }
 
 async function getJson(url: string): Promise<unknown> {
-  const response = await fetchWithTimeout(url);
-  if (!response.ok) {
-    throw new WeatherServiceError(
-      `Falha ao consultar o serviço meteorológico (HTTP ${response.status}).`,
-    );
-  }
+  return withRequestTimeout(async (signal) => {
+    const response = await fetch(url, { signal });
+    if (!response.ok) {
+      throw new WeatherServiceError(
+        `Falha ao consultar o serviço meteorológico (HTTP ${response.status}).`,
+      );
+    }
 
-  try {
-    return (await response.json()) as unknown;
-  } catch {
-    throw new WeatherServiceError('Resposta inválida do serviço meteorológico.');
-  }
+    try {
+      return (await response.json()) as unknown;
+    } catch (error: unknown) {
+      if (isAbortError(error)) throw error;
+      throw new WeatherServiceError('Resposta inválida do serviço meteorológico.');
+    }
+  });
 }
 
 function mapCity(value: unknown): City | null {
@@ -71,7 +87,11 @@ function mapCity(value: unknown): City | null {
     typeof value.country !== 'string' ||
     !value.country.trim() ||
     !requiredNumber(value.latitude) ||
-    !requiredNumber(value.longitude)
+    value.latitude < -90 ||
+    value.latitude > 90 ||
+    !requiredNumber(value.longitude) ||
+    value.longitude < -180 ||
+    value.longitude > 180
   ) {
     return null;
   }
@@ -97,7 +117,6 @@ export async function searchCities(name: string): Promise<City[]> {
   if (!isRecord(response)) {
     throw new WeatherServiceError('Resposta inválida do serviço de localidades.');
   }
-  if (response.results === undefined) return [];
   if (!Array.isArray(response.results)) {
     throw new WeatherServiceError('Resposta inválida do serviço de localidades.');
   }
@@ -191,6 +210,9 @@ function mapForecast(response: unknown, city: City): WeatherData {
     !requiredNumber(windSpeed) ||
     !requiredNumber(precipitation) ||
     !requiredNumber(pressure) ||
+    windSpeed < 0 ||
+    precipitation < 0 ||
+    pressure <= 0 ||
     !Number.isInteger(humidity) ||
     humidity < 0 ||
     humidity > 100 ||

@@ -80,6 +80,7 @@ export function useWeather() {
     lastOperation.current = { type: 'select', city };
     setState((previous) => ({
       ...previous,
+      data: previous.data?.city.id === city.id ? previous.data : null,
       status: 'loading',
       error: null,
       operation: 'forecast',

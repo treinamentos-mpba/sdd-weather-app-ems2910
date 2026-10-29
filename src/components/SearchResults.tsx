@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { City } from '../types/weather';
 
 interface SearchResultsProps {
@@ -6,6 +7,20 @@ interface SearchResultsProps {
 }
 
 function SearchResults({ cities, onSelect }: SearchResultsProps) {
+  const firstResultRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!cities.length) return;
+    const activeElement = document.activeElement;
+    if (
+      activeElement === document.body ||
+      (activeElement instanceof HTMLElement &&
+        activeElement.closest('form[role="search"], [role="alert"]'))
+    ) {
+      firstResultRef.current?.focus();
+    }
+  }, [cities.length]);
+
   if (!cities.length) return null;
 
   return (
@@ -20,9 +35,14 @@ function SearchResults({ cities, onSelect }: SearchResultsProps) {
         Selecione uma para consultar a previsão.
       </p>
       <ul className="results-grid">
-        {cities.map((city) => (
+        {cities.map((city, index) => (
           <li key={city.id}>
-            <button className="result-button" onClick={() => onSelect(city)} type="button">
+            <button
+              className="result-button"
+              onClick={() => onSelect(city)}
+              ref={index === 0 ? firstResultRef : undefined}
+              type="button"
+            >
               <span className="result-name">{city.name}</span>
               <span className="result-location">
                 {[city.region, city.country].filter(Boolean).join(', ')}

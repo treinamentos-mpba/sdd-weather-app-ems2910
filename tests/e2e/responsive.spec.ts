@@ -123,9 +123,6 @@ test('mantém busca, seleção e previsão por teclado em 320px e desktop', asyn
   await page.keyboard.press('Enter');
 
   await expect(page.getByRole('button', { name: /São Paulo.*Brasil/ })).toBeVisible();
-  await page.keyboard.press('Tab');
-  await page.keyboard.press('Tab');
-  await page.keyboard.press('Tab');
   await expect(page.getByRole('button', { name: /São Paulo.*Brasil/ })).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'São Paulo' })).toBeVisible();
@@ -201,8 +198,91 @@ test('mantém o visual GeoCities durante o carregamento e reduz movimento', asyn
   await mockSearch(page, { results: [city] }, 1500);
   await page.goto('/');
   await submitSearch(page);
-  await expect(page.getByRole('status', { name: 'Carregando previsão do tempo' })).toBeVisible();
+  const loading = page.getByRole('status', { name: 'Buscando cidades...' });
+  await expect(loading).toBeVisible();
+  await expect(loading).toHaveAttribute('aria-busy', 'true');
   await expectGeoCitiesSkin(page);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(page.locator('.loading-wheel')).toHaveCSS('animation-name', 'none');
+});
+
+test('busca vazia ou com espaços não envia uma requisição', async ({ page }) => {
+  let requests = 0;
+  await page.route('https://geocoding-api.open-meteo.com/v1/search**', async (route) => {
+    requests += 1;
+    await route.fulfill({ json: { results: [] } });
+  });
+  await page.goto('/');
+  await submitSearch(page, '   \t ');
+
+  await expect(page.getByRole('alert')).toHaveText('Digite o nome de uma cidade para buscar.');
+  expect(requests).toBe(0);
+});
+
+test('mantém hover e foco visível no controle de unidade', async ({ page }) => {
+  await page.goto('/');
+  const fahrenheit = page.getByRole('button', { name: 'Fahrenheit' });
+  await fahrenheit.hover();
+  await expect(fahrenheit).toHaveCSS('background-color', 'rgb(92, 22, 210)');
+  for (let tab = 0; tab < 6; tab += 1) {
+    await page.keyboard.press('Tab');
+  }
+  await expect(fahrenheit).toBeFocused();
+  await expect
+    .poll(() => fahrenheit.evaluate((element) => getComputedStyle(element).outlineStyle))
+    .toBe('dashed');
+});
+
+test('mantém o estado vazio para geocodificação sem resultados', async ({ page }) => {
+  await mockSearch(page, { results: [] });
+  await page.goto('/');
+  await submitSearch(page, 'Lugar inexistente');
+
+  await expect(page.getByRole('heading', { name: 'Nenhuma cidade encontrada' })).toBeVisible();
+  await expect(page.getByRole('searchbox', { name: 'Buscar cidade' })).toHaveValue(
+    'Lugar inexistente',
+  );
+});
+
+test('repete a geocodificação após falha de rede com a mesma consulta', async ({ page }) => {
+  const submittedQueries: string[] = [];
+  await page.route('https://geocoding-api.open-meteo.com/v1/search**', async (route) => {
+    submittedQueries.push(new URL(route.request().url()).searchParams.get('name') ?? '');
+    if (submittedQueries.length === 1) {
+      await route.abort('failed');
+      return;
+    }
+    await route.fulfill({ json: { results: [city] } });
+  });
+  await page.goto('/');
+  await submitSearch(page, 'São Paulo');
+
+  await expect(page.getByRole('heading', { name: 'Algo deu errado' })).toBeVisible();
+  await page.getByRole('button', { name: 'Tentar novamente' }).click();
+  await expect(page.getByRole('button', { name: /São Paulo.*Brasil/ })).toBeFocused();
+  expect(submittedQueries).toEqual(['São Paulo', 'São Paulo']);
+});
+
+test('repete a previsão após falha de rede para as coordenadas selecionadas', async ({ page }) => {
+  await mockSearch(page, { results: [city] });
+  const requestedCoordinates: string[] = [];
+  await page.route('https://api.open-meteo.com/v1/forecast**', async (route) => {
+    const url = new URL(route.request().url());
+    requestedCoordinates.push(`${url.searchParams.get('latitude')},${url.searchParams.get('longitude')}`);
+    if (requestedCoordinates.length === 1) {
+      await route.abort('failed');
+      return;
+    }
+    await route.fulfill({ json: forecast });
+  });
+  await page.goto('/');
+  await submitSearch(page);
+  const result = page.getByRole('button', { name: /São Paulo.*Brasil/ });
+  await expect(result).toBeVisible();
+  await result.click();
+
+  await expect(page.getByRole('heading', { name: 'Algo deu errado' })).toBeVisible();
+  await page.getByRole('button', { name: 'Tentar novamente' }).click();
+  await expect(page.getByRole('heading', { name: 'São Paulo' })).toBeVisible();
+  expect(requestedCoordinates).toEqual(['-23.55,-46.63', '-23.55,-46.63']);
 });

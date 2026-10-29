@@ -6,8 +6,9 @@ function Loading({ label = 'Carregando previsão...' }: LoadingProps) {
   return (
     <section
       aria-busy="true"
-      aria-label="Carregando previsão do tempo"
+      aria-label={label}
       className="panel"
+      aria-live="polite"
       role="status"
     >
       <div className="loading-layout">
@@ -17,7 +18,6 @@ function Loading({ label = 'Carregando previsão...' }: LoadingProps) {
           <p className="state-copy">Só um instante.</p>
         </div>
       </div>
-      <span className="sr-only">{label}</span>
     </section>
   );
 }

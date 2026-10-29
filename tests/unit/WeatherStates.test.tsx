@@ -9,7 +9,7 @@ describe('weather display states', () => {
   it('announces loading accessibly', () => {
     render(<Loading />);
 
-    expect(screen.getByRole('status', { name: 'Carregando previsão do tempo' })).toHaveAttribute(
+    expect(screen.getByRole('status', { name: 'Carregando previsão...' })).toHaveAttribute(
       'aria-busy',
       'true',
     );

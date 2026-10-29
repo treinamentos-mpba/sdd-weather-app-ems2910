@@ -111,6 +111,38 @@ describe('useWeather', () => {
     expect(mockedGetWeather).toHaveBeenNthCalledWith(3, cityFixture);
   });
 
+  it('does not show a previous city report if a different city forecast fails', async () => {
+    mockedGetWeather
+      .mockResolvedValueOnce(weatherFixture)
+      .mockRejectedValueOnce(new Error('forecast failed'));
+
+    function CityHarness() {
+      const weather = useWeather();
+      return (
+        <>
+          <p data-testid="report">{weather.data?.city.name ?? 'sem relatório'}</p>
+          <button onClick={() => void weather.selectCity(cityFixture)} type="button">
+            Primeira cidade
+          </button>
+          <button
+            onClick={() =>
+              void weather.selectCity({ ...cityFixture, id: cityFixture.id + 1, name: 'Recife' })
+            }
+            type="button"
+          >
+            Outra cidade
+          </button>
+        </>
+      );
+    }
+
+    render(<CityHarness />);
+    await act(async () => screen.getByRole('button', { name: 'Primeira cidade' }).click());
+    await waitFor(() => expect(screen.getByTestId('report')).toHaveTextContent('São Paulo'));
+    await act(async () => screen.getByRole('button', { name: 'Outra cidade' }).click());
+    expect(screen.getByTestId('report')).toHaveTextContent('sem relatório');
+  });
+
   it('ignores a stale response when a newer search has finished', async () => {
     let resolveOld: ((value: (typeof cityFixture)[]) => void) | undefined;
     let resolveNew: ((value: (typeof cityFixture)[]) => void) | undefined;
@@ -155,5 +187,41 @@ describe('useWeather', () => {
 
     expect(screen.getByText('Nova')).toBeInTheDocument();
     expect(screen.queryByText('Antiga')).not.toBeInTheDocument();
+  });
+
+  it('ignores a stale forecast when a newer search finishes', async () => {
+    let resolveForecast: ((value: typeof weatherFixture) => void) | undefined;
+    mockedGetWeather.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveForecast = resolve;
+        }),
+    );
+    mockedSearchCities.mockResolvedValue([]);
+
+    function ConcurrentHarness() {
+      const weather = useWeather();
+      return (
+        <>
+          <p data-testid="status">{weather.status}</p>
+          <p data-testid="report">{weather.data?.city.name ?? 'sem relatório'}</p>
+          <button onClick={() => void weather.selectCity(cityFixture)} type="button">
+            Selecionar
+          </button>
+          <button onClick={() => void weather.search('Atlantis')} type="button">
+            Buscar outra cidade
+          </button>
+        </>
+      );
+    }
+
+    render(<ConcurrentHarness />);
+    screen.getByRole('button', { name: 'Selecionar' }).click();
+    screen.getByRole('button', { name: 'Buscar outra cidade' }).click();
+    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('empty'));
+    await act(async () => resolveForecast?.(weatherFixture));
+
+    expect(screen.getByTestId('status')).toHaveTextContent('empty');
+    expect(screen.getByTestId('report')).toHaveTextContent('sem relatório');
   });
 });
