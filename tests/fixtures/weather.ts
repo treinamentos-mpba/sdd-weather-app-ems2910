@@ -16,10 +16,6 @@ export const weatherFixture: WeatherData = {
   current: {
     temperatureCelsius: 24,
     condition: { label: 'Parcialmente nublado', icon: 'partly-cloudy' },
-    humidityPercent: 68,
-    windKmh: 12,
-    precipitationMm: 0.4,
-    pressureHpa: 1014,
   },
   forecast: [
     {

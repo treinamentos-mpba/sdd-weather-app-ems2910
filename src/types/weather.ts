@@ -7,13 +7,9 @@ export interface WeatherCondition {
   icon: WeatherIconName;
 }
 
-export interface WeatherMetrics {
+export interface CurrentConditions {
   temperatureCelsius: number;
   condition: WeatherCondition;
-  humidityPercent: number;
-  windKmh: number;
-  precipitationMm: number;
-  pressureHpa: number;
 }
 
 export interface ForecastDay {
@@ -36,7 +32,7 @@ export interface City {
 export interface WeatherData {
   city: City;
   timezone: string;
-  current: WeatherMetrics;
+  current: CurrentConditions;
   forecast: ForecastDay[];
 }
 

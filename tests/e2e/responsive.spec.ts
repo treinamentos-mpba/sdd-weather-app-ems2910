@@ -14,19 +14,11 @@ const forecast = {
   timezone: 'America/Sao_Paulo',
   current: {
     temperature_2m: 24,
-    relative_humidity_2m: 68,
     weather_code: 2,
-    wind_speed_10m: 12,
-    precipitation: 0.4,
-    pressure_msl: 1014,
   },
   current_units: {
     temperature_2m: '°C',
-    relative_humidity_2m: '%',
     weather_code: 'wmo code',
-    wind_speed_10m: 'km/h',
-    precipitation: 'mm',
-    pressure_msl: 'hPa',
   },
   daily: {
     time: ['2026-10-29', '2026-10-30', '2026-10-31', '2026-11-01', '2026-11-02'],
@@ -268,7 +260,9 @@ test('repete a previsão após falha de rede para as coordenadas selecionadas', 
   const requestedCoordinates: string[] = [];
   await page.route('https://api.open-meteo.com/v1/forecast**', async (route) => {
     const url = new URL(route.request().url());
-    requestedCoordinates.push(`${url.searchParams.get('latitude')},${url.searchParams.get('longitude')}`);
+    requestedCoordinates.push(
+      `${url.searchParams.get('latitude')},${url.searchParams.get('longitude')}`,
+    );
     if (requestedCoordinates.length === 1) {
       await route.abort('failed');
       return;

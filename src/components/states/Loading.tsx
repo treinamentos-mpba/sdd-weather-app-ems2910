@@ -4,13 +4,7 @@ interface LoadingProps {
 
 function Loading({ label = 'Carregando previsão...' }: LoadingProps) {
   return (
-    <section
-      aria-busy="true"
-      aria-label={label}
-      className="panel"
-      aria-live="polite"
-      role="status"
-    >
+    <section aria-busy="true" aria-label={label} className="panel" aria-live="polite" role="status">
       <div className="loading-layout">
         <span aria-hidden="true" className="loading-wheel" />
         <div>
