@@ -5,7 +5,7 @@ import WeatherIcon from './WeatherIcon';
 interface CurrentWeatherProps {
   city: {
     name: string;
-    region: string;
+    region?: string;
     country: string;
   };
   current: WeatherMetrics;

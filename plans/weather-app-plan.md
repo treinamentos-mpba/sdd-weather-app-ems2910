@@ -8,12 +8,12 @@ Aplicação de página única em React. A interface coordena busca e seleção, 
 
 ```text
 Usuário
-  -> WeatherPage / SearchForm / SearchResults
+  -> App / SearchBar / SearchResults
        -> useWeather (estado de consulta e unidade)
-            -> geocodingService -> Open-Meteo Geocoding API
-            -> forecastService  -> Open-Meteo Forecast API
+            -> weatherService -> Open-Meteo Geocoding API
+            -> weatherService -> Open-Meteo Forecast API
                  -> validação e mapeamento -> modelos da aplicação
-       -> CurrentWeather / DailyForecast
+       -> CurrentWeather / ForecastList / ForecastCard
 ```
 
 O formulário envia uma busca explícita; o serviço de geocodificação não seleciona um resultado por conta própria. A seleção fornece coordenadas e contexto do local ao serviço de previsão. Componentes exibem os estados que o fluxo controla, sem acessar APIs diretamente. Esta separação atende FR-01 a FR-07 e facilita testes isolados (NFR-05).
@@ -39,22 +39,24 @@ Estrutura proposta para a implementação; criar somente os arquivos necessário
 ```text
 src/
   components/
-    SearchForm.tsx          # Entrada, envio e estado de busca
+    SearchBar.tsx           # Entrada, envio e estado de busca
     SearchResults.tsx       # Resultados selecionáveis e contexto geográfico
     CurrentWeather.tsx      # Local selecionado e condições atuais
-    DailyForecast.tsx       # Cinco dias em ordem cronológica
+    ForecastList.tsx        # Grade dos cinco dias
+    ForecastCard.tsx        # Condições e temperaturas de um dia
     UnitToggle.tsx          # Controle acessível °C/°F
+    states/
+      Loading.tsx
+      Error.tsx
+      Empty.tsx
   hooks/
     useWeather.ts           # Orquestra estados e ações da tela
   services/
-    geocoding.ts            # Requisição e mapeamento de localidades
-    forecast.ts             # Requisição e validação da previsão
+    weatherService.ts       # Geocodificação, previsão, validação e códigos WMO
   types/
     weather.ts              # Modelos internos compartilhados
-    openMeteo.ts            # Tipos mínimos das respostas externas
   utils/
-    weatherCode.ts          # Código WMO para rótulo em pt-BR
-    temperature.ts           # Conversão de apresentação °C/°F
+    temperature.ts          # Conversão de apresentação °C/°F
 tests/
   unit/                     # Serviços, validação e funções puras
   components/               # Estados e interações acessíveis
@@ -74,20 +76,29 @@ interface City {
   id: number;
   name: string;
   country: string;
-  admin1?: string;
+  region?: string; // mapeada de admin1 quando fornecida
   latitude: number;
   longitude: number;
   timezone?: string;
 }
 
+interface WeatherCondition {
+  label: string;
+  icon: string;
+}
+
 interface CurrentConditions {
   temperatureCelsius: number;
-  weatherCode: number;
+  condition: WeatherCondition;
+  humidityPercent: number;
+  windKmh: number;
+  precipitationMm: number;
+  pressureHpa: number;
 }
 
 interface DailyForecastDay {
   date: string; // YYYY-MM-DD no fuso local do local consultado
-  weatherCode: number;
+  condition: WeatherCondition;
   minimumCelsius: number;
   maximumCelsius: number;
 }
@@ -96,7 +107,7 @@ interface WeatherReport {
   city: City;
   timezone: string;
   current: CurrentConditions;
-  days: [DailyForecastDay, DailyForecastDay, DailyForecastDay, DailyForecastDay, DailyForecastDay];
+  forecast: DailyForecastDay[];
 }
 ```
 
@@ -110,13 +121,13 @@ Resultados externos são tratados como dados não confiáveis: validar presença
 flowchart TD
   User[Usuario] -->|Envia consulta| UI[UI: formulario e resultados]
   UI -->|onSearch: consulta normalizada| Hook[useWeather: atualiza estado]
-  Hook -->|Busca cidade| GeoService[geocodingService]
+  Hook -->|Busca cidade| GeoService[weatherService.searchCities]
   GeoService -->|GET geocoding| GeoAPI[Open-Meteo Geocoding]
   GeoAPI -->|Resultados| GeoService
   GeoService -->|City: sucesso, vazio ou erro| Hook
   Hook -->|Estado de busca| UI
   UI -->|Selecao explicita de City| Hook
-  Hook -->|Coordenadas da cidade| ForecastService[forecastService]
+  Hook -->|Coordenadas da cidade| ForecastService[weatherService.getWeather]
   ForecastService -->|GET forecast| ForecastAPI[Open-Meteo Forecast]
   ForecastAPI -->|Resposta| ForecastService
   ForecastService -->|Valida e mapeia WeatherReport| Hook
@@ -136,30 +147,24 @@ Cada nova busca deve invalidar ou cancelar a resposta anterior para que um resul
 
 - Endpoint: `https://geocoding-api.open-meteo.com/v1/search`
 - Parâmetros: `name` (consulta normalizada), `count` (limite configurável), `language=pt` e `format=json`.
-- Campos usados: `id`, `name`, `country`, `admin1` quando presente, `latitude`, `longitude` e `timezone` quando presente.
+- Campos usados: `id`, `name`, `country`, `admin1` quando presente (mapeado para `region`), `latitude`, `longitude` e `timezone` quando presente.
 - Uma lista ausente ou vazia equivale a nenhum resultado. Região e zona horária ausentes não devem impedir a escolha da cidade; porém, zona horária ausente impede calcular datas locais com segurança e deve ser tratada no carregamento da previsão.
 
 ### Forecast
 
 - Endpoint: `https://api.open-meteo.com/v1/forecast`
-- Parâmetros: `latitude`, `longitude`, `current=temperature_2m,weather_code`, `daily=weather_code,temperature_2m_max,temperature_2m_min`, `temperature_unit=celsius`, `timezone=auto` e `forecast_days=5`.
-- Campos usados: `current.temperature_2m`, `current.weather_code`, os arrays diários `time`, `weather_code`, `temperature_2m_min` e `temperature_2m_max`, além de `timezone` e metadados de unidade para validação.
+- Parâmetros: `latitude`, `longitude`, `current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation,pressure_msl`, `daily=weather_code,temperature_2m_max,temperature_2m_min`, `temperature_unit=celsius`, `wind_speed_unit=kmh`, `precipitation_unit=mm`, `timezone=auto` e `forecast_days=5`.
+- Campos usados: valores atuais de temperatura, umidade, código meteorológico, vento, precipitação e pressão; arrays diários `time`, `weather_code`, `temperature_2m_min` e `temperature_2m_max`, além de `timezone` e metadados de unidade para validação.
 - Conferir a resposta real do provedor durante a implementação. Se `forecast_days=5` não garantir a data local atual no contexto de uma chamada específica, ajustar a solicitação com base no contrato documentado da API; o critério invariável é hoje e os quatro dias seguintes no fuso do local.
 - Traduzir `weather_code` por tabela baseada nos códigos WMO documentados. Código desconhecido deve resultar em rótulo genérico em pt-BR, não em falha de renderização.
 
-Usar timeout e mensagens de erro apropriadas quando seus valores forem definidos. A implementação deve confirmar limites de uso e obrigações de atribuição vigentes antes da publicação (NFR-07 e risco da spec). Nenhuma chave secreta é necessária.
+Usar timeout de 10 segundos; converter cancelamento por timeout para “A requisição demorou demais.” e falha de rede para “Falha de rede.”. A implementação deve confirmar limites de uso e obrigações de atribuição vigentes antes da publicação (NFR-07 e risco da spec). Nenhuma chave secreta é necessária.
 
 ## State Management
 
-O estado vive na página por meio do hook `useWeather` e `useState`; não introduzir store global. Manter em campos separados:
+O estado de consulta vive no hook `useWeather`; a unidade fica na página e não deve ser duplicada no hook. Não introduzir store global. O hook mantém texto da busca, cidades retornadas, relatório meteorológico, erro e status (`idle`, `loading`, `success`, `empty` ou `error`). Durante `loading`, um campo de operação distingue busca de previsão; o hook guarda a última operação para retry. A busca apresenta resultados para seleção explícita; não seleciona automaticamente a primeira cidade (FR-02, AC-02).
 
-- texto atual da busca;
-- status e resultados da busca;
-- cidade selecionada;
-- status e relatório meteorológico;
-- unidade ativa (inicia em Celsius).
-
-Representar os estados de busca e previsão com uniões discriminadas, evitando combinações ambíguas de booleanos. Estados mínimos: `idle`, `loading`, `success`, `empty` (busca), e `error`; a previsão não possui estado `empty` equivalente, pois dados incompletos são erro de validação. Busca e previsão têm estados independentes para representar a falha de previsão após uma busca bem-sucedida sem exibir relatório parcial como completo.
+Uma busca bem-sucedida pode ter `cities` sem relatório `data`; selecionar uma cidade consulta pelas coordenadas. Falha de busca ou previsão não apaga silenciosamente um relatório anterior. Dados incompletos continuam sendo erro, nunca sucesso.
 
 A unidade permanece em memória durante a sessão/navegação atual; não persistir no servidor nem em armazenamento local até a decisão em aberto ser tomada. A troca de unidade afeta apenas a formatação, sem alterar os dados normalizados ou disparar novas requisições.
 

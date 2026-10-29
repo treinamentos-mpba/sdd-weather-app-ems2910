@@ -1,21 +1,21 @@
-import type { WeatherReport } from '../types/weather';
+import type { City, WeatherData } from '../../src/types/weather';
 
-/**
- * Entirely fictional sample weather for the visual demo. It is not live
- * weather and is intentionally kept separate from UI components.
- */
-const mockWeather: WeatherReport = {
-  city: {
-    name: 'São Paulo',
-    region: 'São Paulo',
-    country: 'Brasil',
-  },
+export const cityFixture: City = {
+  id: 5391959,
+  name: 'São Paulo',
+  region: 'São Paulo',
+  country: 'Brasil',
+  latitude: -23.55,
+  longitude: -46.63,
+  timezone: 'America/Sao_Paulo',
+};
+
+export const weatherFixture: WeatherData = {
+  city: cityFixture,
+  timezone: 'America/Sao_Paulo',
   current: {
     temperatureCelsius: 24,
-    condition: {
-      label: 'Parcialmente nublado',
-      icon: 'partly-cloudy',
-    },
+    condition: { label: 'Parcialmente nublado', icon: 'partly-cloudy' },
     humidityPercent: 68,
     windKmh: 12,
     precipitationMm: 0.4,
@@ -24,7 +24,7 @@ const mockWeather: WeatherReport = {
   forecast: [
     {
       date: '2026-10-29',
-      condition: { label: 'Ensolarado', icon: 'sun' },
+      condition: { label: 'Céu limpo', icon: 'sun' },
       minimumCelsius: 18,
       maximumCelsius: 27,
     },
@@ -42,17 +42,15 @@ const mockWeather: WeatherReport = {
     },
     {
       date: '2026-11-01',
-      condition: { label: 'Chuva leve', icon: 'rain' },
+      condition: { label: 'Chuva fraca', icon: 'rain' },
       minimumCelsius: 16,
       maximumCelsius: 22,
     },
     {
       date: '2026-11-02',
-      condition: { label: 'Ensolarado', icon: 'sun' },
+      condition: { label: 'Céu limpo', icon: 'sun' },
       minimumCelsius: 18,
       maximumCelsius: 28,
     },
   ],
 };
-
-export default mockWeather;

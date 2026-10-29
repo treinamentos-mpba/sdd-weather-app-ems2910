@@ -1,4 +1,8 @@
-function Empty() {
+interface EmptyProps {
+  query: string;
+}
+
+function Empty({ query }: EmptyProps) {
   return (
     <section
       aria-labelledby="empty-weather-title"
@@ -12,11 +16,10 @@ function Empty() {
         ☁
       </span>
       <h2 className="mt-5 text-xl font-semibold text-white" id="empty-weather-title">
-        Nenhum dado disponível
+        Nenhuma cidade encontrada
       </h2>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-400">
-        Não há uma previsão para mostrar neste estado demonstrativo. Você pode voltar aos dados de
-        demonstração pelo seletor abaixo.
+        Não encontramos localidades para “{query}”. Confira a escrita e tente novamente.
       </p>
     </section>
   );

@@ -13,23 +13,23 @@ describe('weather display states', () => {
       'aria-busy',
       'true',
     );
-    expect(screen.getByText('Carregando previsão...')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Carregando previsão...');
   });
 
   it('offers an accessible retry action after an error', async () => {
     const user = userEvent.setup();
     const onRetry = vi.fn();
-    render(<WeatherError onRetry={onRetry} />);
+    render(<WeatherError message="Falha de rede." onRetry={onRetry} />);
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Algo deu errado');
+    expect(screen.getByRole('alert')).toHaveTextContent('Falha de rede.');
     await user.click(screen.getByRole('button', { name: 'Tentar novamente' }));
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
   it('distinguishes an empty result from a failure', () => {
-    render(<Empty />);
+    render(<Empty query="Cidade inexistente" />);
 
-    expect(screen.getByRole('status')).toHaveTextContent('Nenhum dado disponível');
+    expect(screen.getByRole('status')).toHaveTextContent('Nenhuma cidade encontrada');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

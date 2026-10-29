@@ -23,12 +23,21 @@ export interface ForecastDay {
   maximumCelsius: number;
 }
 
-export interface WeatherReport {
-  city: {
-    name: string;
-    region: string;
-    country: string;
-  };
+export interface City {
+  id: number;
+  name: string;
+  region?: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+  timezone?: string;
+}
+
+export interface WeatherData {
+  city: City;
+  timezone: string;
   current: WeatherMetrics;
   forecast: ForecastDay[];
 }
+
+export type WeatherReport = WeatherData;

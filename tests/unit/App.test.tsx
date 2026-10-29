@@ -1,10 +1,67 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from '../../src/App';
 
-describe('App', () => {
-  it('renders clearly identified demo data and five forecast cards', () => {
+const city = {
+  id: 3448439,
+  name: 'São Paulo',
+  country: 'Brasil',
+  admin1: 'São Paulo',
+  latitude: -23.55,
+  longitude: -46.63,
+  timezone: 'America/Sao_Paulo',
+};
+
+function geocodingResponse(): Response {
+  return new Response(JSON.stringify({ results: [city] }), { status: 200 });
+}
+
+function forecastResponse(): Response {
+  return new Response(
+    JSON.stringify({
+      timezone: 'America/Sao_Paulo',
+      current: {
+        temperature_2m: 24,
+        relative_humidity_2m: 68,
+        weather_code: 2,
+        wind_speed_10m: 12,
+        precipitation: 0.4,
+        pressure_msl: 1014,
+      },
+      current_units: {
+        temperature_2m: '°C',
+        relative_humidity_2m: '%',
+        weather_code: 'wmo code',
+        wind_speed_10m: 'km/h',
+        precipitation: 'mm',
+        pressure_msl: 'hPa',
+      },
+      daily: {
+        time: ['2026-10-29', '2026-10-30', '2026-10-31', '2026-11-01', '2026-11-02'],
+        weather_code: [0, 2, 3, 61, 0],
+        temperature_2m_min: [18, 19, 17, 16, 18],
+        temperature_2m_max: [27, 26, 23, 22, 28],
+      },
+      daily_units: {
+        weather_code: 'wmo code',
+        temperature_2m_min: '°C',
+        temperature_2m_max: '°C',
+      },
+    }),
+    { status: 200 },
+  );
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe('App integration', () => {
+  it('searches and presents cities without selecting the first result automatically', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn().mockResolvedValueOnce(geocodingResponse());
+    vi.stubGlobal('fetch', fetchMock);
     render(<App />);
 
     expect(screen.getByRole('link', { name: 'Pular para o conteúdo principal' })).toHaveAttribute(
@@ -12,49 +69,57 @@ describe('App', () => {
       '#main-content',
     );
     expect(screen.getByRole('main')).toHaveAttribute('tabindex', '-1');
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'Olá, como está o tempo?' }),
-    ).toBeVisible();
-    expect(
-      screen.getByText('Dados de demonstração · não são informações em tempo real'),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 2, name: 'São Paulo' })).toBeInTheDocument();
-    expect(screen.getAllByRole('article')).toHaveLength(5);
-    expect(screen.getByText(/Nenhuma consulta à internet é realizada/)).toBeInTheDocument();
-  });
+    expect(screen.queryByRole('heading', { name: 'São Paulo' })).not.toBeInTheDocument();
 
-  it('updates all displayed temperatures without changing the location or dates', async () => {
-    const user = userEvent.setup();
-    render(<App />);
+    await user.type(screen.getByRole('searchbox', { name: 'Buscar cidade' }), 'São Paulo');
+    await user.click(screen.getByRole('button', { name: 'Buscar' }));
+
+    const cityOption = await screen.findByRole('button', {
+      name: /São Paulo.*Brasil/,
+    });
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      '1 localidade encontrada. Selecione uma para consultar a previsão.',
+    );
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(String(fetchMock.mock.calls[0][0])).toContain('geocoding-api.open-meteo.com');
+    expect(fetchMock.mock.calls[0][0]).toContain('name=S%C3%A3o%20Paulo');
+    expect(screen.queryByRole('heading', { name: 'São Paulo' })).not.toBeInTheDocument();
+
+    fetchMock.mockResolvedValueOnce(forecastResponse());
+    await user.click(cityOption);
+
+    expect(await screen.findByRole('heading', { name: 'São Paulo' })).toBeInTheDocument();
+    expect(screen.getAllByRole('article')).toHaveLength(5);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[1][0])).toContain('api.open-meteo.com/v1/forecast');
+    expect(String(fetchMock.mock.calls[1][0])).toContain('latitude=-23.55');
 
     const firstForecastCard = screen.getAllByRole('article')[0];
     await user.click(screen.getByRole('button', { name: 'Fahrenheit' }));
-
-    expect(screen.getByRole('heading', { name: 'São Paulo' })).toBeInTheDocument();
     expect(within(firstForecastCard).getByText('81°F')).toBeInTheDocument();
-    expect(within(firstForecastCard).getByText('64°F')).toBeInTheDocument();
-    expect(screen.getAllByText(/°F/).length).toBeGreaterThan(10);
     expect(screen.getByRole('button', { name: 'Fahrenheit' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
   });
 
-  it('allows loading, empty, and error demo states and retries back to the mock', async () => {
+  it('offers retry for a failed real request and distinguishes empty results', async () => {
     const user = userEvent.setup();
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('offline'))
+      .mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
     render(<App />);
 
-    const stateSelect = screen.getByRole('combobox', { name: 'Estado da interface' });
-    await user.selectOptions(stateSelect, 'loading');
-    expect(
-      screen.getByRole('status', { name: 'Carregando previsão do tempo' }),
-    ).toBeInTheDocument();
+    await user.type(screen.getByRole('searchbox', { name: 'Buscar cidade' }), 'Recife');
+    await user.click(screen.getByRole('button', { name: 'Buscar' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Falha de rede.');
 
-    await user.selectOptions(stateSelect, 'empty');
-    expect(screen.getByRole('status')).toHaveTextContent('Nenhum dado disponível');
-
-    await user.selectOptions(stateSelect, 'error');
     await user.click(screen.getByRole('button', { name: 'Tentar novamente' }));
-    expect(screen.getByRole('heading', { name: 'São Paulo' })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Nenhuma cidade encontrada'),
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

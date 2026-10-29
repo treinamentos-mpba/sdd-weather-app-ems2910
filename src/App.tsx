@@ -2,34 +2,17 @@ import { useState } from 'react';
 import CurrentWeather from './components/CurrentWeather';
 import ForecastList from './components/ForecastList';
 import SearchBar from './components/SearchBar';
+import SearchResults from './components/SearchResults';
 import Empty from './components/states/Empty';
 import WeatherError from './components/states/Error';
 import Loading from './components/states/Loading';
 import UnitToggle from './components/UnitToggle';
-import mockWeather from './data/mockWeather';
+import { useWeather } from './hooks/useWeather';
 import type { TemperatureUnit } from './types/weather';
-
-type DemoState = 'success' | 'loading' | 'error' | 'empty';
 
 function App() {
   const [unit, setUnit] = useState<TemperatureUnit>('celsius');
-  const [displayState, setDisplayState] = useState<DemoState>('success');
-  const [lastSearch, setLastSearch] = useState('');
-
-  function renderWeather() {
-    if (displayState === 'loading') return <Loading />;
-    if (displayState === 'error') {
-      return <WeatherError onRetry={() => setDisplayState('success')} />;
-    }
-    if (displayState === 'empty') return <Empty />;
-
-    return (
-      <>
-        <CurrentWeather city={mockWeather.city} current={mockWeather.current} unit={unit} />
-        <ForecastList days={mockWeather.forecast} unit={unit} />
-      </>
-    );
-  }
+  const weather = useWeather();
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-night-900 text-white" id="page-top">
@@ -81,7 +64,7 @@ function App() {
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start lg:w-[min(100%,36rem)]">
             <div className="min-w-0 flex-1">
-              <SearchBar onSearch={setLastSearch} />
+              <SearchBar onSearch={weather.search} />
             </div>
             <UnitToggle onChange={setUnit} unit={unit} />
           </div>
@@ -90,42 +73,56 @@ function App() {
         <main className="mt-9 sm:mt-12" id="main-content" tabIndex={-1}>
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-sm font-medium text-accent-400">Quinta-feira, 29 de outubro</p>
+              <p className="text-sm font-medium text-accent-400">Previsão local</p>
               <h1 className="mt-1 text-2xl font-bold tracking-tight text-white sm:text-3xl">
                 Olá, como está o tempo?
               </h1>
             </div>
-            <p className="w-fit rounded-full border border-amber-200/15 bg-amber-200/[0.07] px-3 py-1.5 text-xs font-medium text-amber-100/90">
-              Dados de demonstração · não são informações em tempo real
+            <p className="w-fit rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-slate-300">
+              Dados meteorológicos · Open-Meteo
             </p>
           </div>
 
-          {lastSearch && (
-            <p aria-live="polite" className="mb-4 text-sm text-slate-300" role="status">
-              Busca demonstrativa recebida: <span className="font-semibold">{lastSearch}</span>. Os
-              dados exibidos continuam sendo exemplos.
-            </p>
+          {weather.status === 'loading' && (
+            <div className="mb-6">
+              <Loading
+                label={
+                  weather.operation === 'search' ? 'Buscando cidades...' : 'Buscando previsão...'
+                }
+              />
+            </div>
+          )}
+          {weather.status === 'error' && weather.error && (
+            <div className="mb-6">
+              <WeatherError message={weather.error} onRetry={weather.retry} />
+            </div>
+          )}
+          {weather.status === 'empty' && <Empty query={weather.query} />}
+          {weather.status === 'idle' && (
+            <section
+              aria-label="Comece uma busca"
+              className="mb-6 rounded-[2rem] border border-white/10 bg-white/[0.06] px-6 py-10 text-center shadow-glass"
+            >
+              <p className="text-slate-300">
+                Busque uma cidade e selecione uma localidade para consultar a previsão.
+              </p>
+            </section>
           )}
 
-          {renderWeather()}
+          <SearchResults cities={weather.cities} onSelect={weather.selectCity} />
 
-          <footer className="mt-8 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
+          {weather.data && (
+            <div aria-live="polite">
+              <CurrentWeather city={weather.data.city} current={weather.data.current} unit={unit} />
+              <ForecastList days={weather.data.forecast} unit={unit} />
+            </div>
+          )}
+
+          <footer className="mt-8 border-t border-white/10 pt-5">
             <p className="text-xs leading-5 text-slate-400">
-              Exemplo visual com valores fictícios. Nenhuma consulta à internet é realizada.
+              Dados fornecidos pela Open-Meteo. A busca de localidades e a previsão são carregadas
+              mediante solicitação.
             </p>
-            <label className="flex items-center gap-3 text-xs text-slate-400">
-              <span>Estado da interface</span>
-              <select
-                className="rounded-lg border border-white/10 bg-night-800 px-3 py-2 text-sm text-slate-200 outline-none transition focus-visible:ring-2 focus-visible:ring-accent-400"
-                onChange={(event) => setDisplayState(event.target.value as DemoState)}
-                value={displayState}
-              >
-                <option value="success">Dados de demonstração</option>
-                <option value="loading">Carregando</option>
-                <option value="error">Erro</option>
-                <option value="empty">Sem dados</option>
-              </select>
-            </label>
           </footer>
         </main>
       </div>

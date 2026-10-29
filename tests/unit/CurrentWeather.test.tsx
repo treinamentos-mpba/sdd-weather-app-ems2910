@@ -1,11 +1,13 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import CurrentWeather from '../../src/components/CurrentWeather';
-import mockWeather from '../../src/data/mockWeather';
+import { weatherFixture } from '../fixtures/weather';
 
 describe('CurrentWeather', () => {
   it('shows location, current conditions, and all weather metrics', () => {
-    render(<CurrentWeather city={mockWeather.city} current={mockWeather.current} unit="celsius" />);
+    render(
+      <CurrentWeather city={weatherFixture.city} current={weatherFixture.current} unit="celsius" />,
+    );
 
     expect(screen.getByRole('heading', { name: 'São Paulo' })).toBeInTheDocument();
     expect(screen.getByText('São Paulo, Brasil')).toBeInTheDocument();
@@ -19,7 +21,11 @@ describe('CurrentWeather', () => {
 
   it('converts the current temperature to Fahrenheit', () => {
     render(
-      <CurrentWeather city={mockWeather.city} current={mockWeather.current} unit="fahrenheit" />,
+      <CurrentWeather
+        city={weatherFixture.city}
+        current={weatherFixture.current}
+        unit="fahrenheit"
+      />,
     );
 
     expect(screen.getByText('75°F')).toBeInTheDocument();

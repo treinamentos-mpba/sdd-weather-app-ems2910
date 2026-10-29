@@ -1,8 +1,9 @@
 interface ErrorProps {
+  message: string;
   onRetry: () => void;
 }
 
-function WeatherError({ onRetry }: ErrorProps) {
+function WeatherError({ message, onRetry }: ErrorProps) {
   return (
     <section
       aria-labelledby="weather-error-title"
@@ -15,10 +16,7 @@ function WeatherError({ onRetry }: ErrorProps) {
           <h2 className="mt-1 text-xl font-semibold text-white" id="weather-error-title">
             Algo deu errado
           </h2>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
-            Este é um estado de erro demonstrativo. Tente novamente para voltar aos dados de
-            demonstração.
-          </p>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">{message}</p>
         </div>
         <button
           className="rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-400"

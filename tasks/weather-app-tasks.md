@@ -25,7 +25,7 @@ paralelo.
     estreito; os viewports definitivos dependem da matriz ainda pendente.
 - **Dependências:** nenhuma.
 - **Arquivos prováveis:** `src/main.tsx`, `src/App.tsx`,
-  `src/components/WeatherPage.tsx`, `src/index.css`.
+  `src/components/CurrentWeather.tsx`, `src/index.css`.
 - **Tipo:** Infra
 - **Requisitos:** FR-07, FR-08, FR-09; AC-09, AC-10, AC-11.
 
@@ -35,12 +35,14 @@ paralelo.
   condições atuais, dias de previsão e respostas mínimas da Open-Meteo.
 - **Critérios de aceite:**
   - Os modelos representam cidade, coordenadas, país, região opcional, fuso,
-    temperaturas canônicas em Celsius, códigos meteorológicos e cinco dias.
+    identificador da localidade, temperaturas canônicas em Celsius, condições
+    atuais e cinco dias.
   - Os tipos das respostas externas não afirmam validade dos dados recebidos;
     a validação fica a cargo dos serviços.
   - A compilação TypeScript strict passa sem casts inseguros.
 - **Dependências:** nenhuma.
-- **Arquivos prováveis:** `src/types/weather.ts`, `src/types/openMeteo.ts`.
+- **Arquivos prováveis:** `src/types/weather.ts`; a validação de payloads externos
+  fica no serviço `src/services/weatherService.ts`.
 - **Tipo:** Data
 - **Requisitos:** FR-02, FR-03, FR-04, FR-05; AC-04 a AC-07; NFR-05.
 
@@ -58,8 +60,8 @@ paralelo.
   - Os resultados identificam a unidade escolhida; o arredondamento respeita
     a decisão registrada na spec quando definida.
 - **Dependências:** T-02.
-- **Arquivos prováveis:** `src/utils/temperature.ts`,
-  `src/utils/weatherCode.ts`.
+- **Arquivos prováveis:** `src/utils/temperature.ts` e o mapeamento WMO em
+  `src/services/weatherService.ts`.
 - **Tipo:** Data
 - **Requisitos:** FR-03, FR-05, FR-07; AC-05, AC-07, AC-09.
 
@@ -71,13 +73,13 @@ paralelo.
   - Espaços no início e no fim são removidos; consulta vazia ou só com espaços
     não aciona `fetch`.
   - A requisição usa a API de geocodificação da Open-Meteo e resultados válidos
-    preservam nome, país, região quando disponível, coordenadas e fuso quando
-    disponível.
+    preservam `id`, nome, país, região quando disponível, coordenadas e fuso
+    quando disponível.
   - Resposta vazia produz lista vazia; falha HTTP, de rede ou JSON inválido é
     reportada como erro, não como ausência de resultados.
 - **Dependências:** T-02.
-- **Arquivos prováveis:** `src/services/geocoding.ts`,
-  `src/types/openMeteo.ts`.
+- **Arquivos prováveis:** `src/services/weatherService.ts`,
+  `src/types/weather.ts`.
 - **Tipo:** Data
 - **Requisitos:** FR-01, FR-02, FR-06; AC-01 a AC-03; NFR-05, NFR-07.
 
@@ -92,8 +94,8 @@ paralelo.
     desconhecidos.
   - Os testes passam isoladamente pelo runner Vitest.
 - **Dependências:** T-03, T-04.
-- **Arquivos prováveis:** `tests/unit/temperature.test.ts`,
-  `tests/unit/weatherCode.test.ts`, `tests/unit/geocoding.test.ts`.
+- **Arquivos prováveis:** `tests/unit/weatherService.test.ts`,
+  `tests/unit/App.test.tsx`.
 - **Tipo:** Test
 - **Requisitos:** FR-01 a FR-03, FR-05, FR-06; AC-01 a AC-03, AC-05, AC-07.
 
@@ -103,7 +105,8 @@ paralelo.
   validar os dados antes de produzir um relatório interno.
 - **Critérios de aceite:**
   - A requisição usa coordenadas, temperatura em Celsius, `timezone=auto` e
-    cinco dias; solicita campos atuais e diários necessários.
+    cinco dias; solicita temperatura, condição, umidade, vento, precipitação e
+    pressão atuais, além dos campos diários.
   - O serviço exige dados atuais válidos, fuso válido e cinco datas locais
     consecutivas com condição, mínima e máxima.
   - Respostas incompletas, arrays inconsistentes, unidades incompatíveis,
@@ -112,8 +115,8 @@ paralelo.
   - As datas são mantidas conforme o fuso retornado pelo provedor, sem depender
     do fuso do navegador.
 - **Dependências:** T-02.
-- **Arquivos prováveis:** `src/services/forecast.ts`,
-  `src/types/weather.ts`, `src/types/openMeteo.ts`.
+- **Arquivos prováveis:** `src/services/weatherService.ts`,
+  `src/types/weather.ts`.
 - **Tipo:** Data
 - **Requisitos:** FR-03, FR-04, FR-06, FR-07; AC-04, AC-05, AC-06, AC-08,
   AC-09; NFR-05, NFR-07.
@@ -128,7 +131,7 @@ paralelo.
     inconsistentes e previsão com menos de cinco dias.
   - Uma resposta inválida nunca produz um relatório completo.
 - **Dependências:** T-06.
-- **Arquivos prováveis:** `tests/unit/forecast.test.ts`.
+- **Arquivos prováveis:** `tests/unit/weatherService.test.ts`.
 - **Tipo:** Test
 - **Requisitos:** FR-03, FR-04, FR-06, FR-07; AC-05, AC-06, AC-08, AC-09;
   NFR-05.
@@ -147,7 +150,7 @@ paralelo.
   - Resultados não são selecionados automaticamente; foco e rótulos acessíveis
     são identificáveis.
 - **Dependências:** T-01, T-02.
-- **Arquivos prováveis:** `src/components/SearchForm.tsx`,
+- **Arquivos prováveis:** `src/components/SearchBar.tsx`,
   `src/components/SearchResults.tsx`.
 - **Tipo:** UI
 - **Requisitos:** FR-01, FR-02, FR-08; AC-01, AC-02, AC-10; NFR-03, NFR-04.
@@ -157,8 +160,10 @@ paralelo.
 - **Descrição:** conectar serviços e interface pelo hook de estado da página,
   incluindo carregamento, vazio, sucesso, erros e nova tentativa.
 - **Critérios de aceite:**
-  - O fluxo mantém busca e previsão em estados distintos, sem confundir erro
-    com resultado vazio.
+  - O status diferencia idle, loading, sucesso, busca vazia e erro; durante
+    loading, a operação identifica se a busca ou previsão está em andamento.
+  - Uma busca com resultados apresenta opções para seleção explícita; não
+    seleciona automaticamente a primeira cidade.
   - A seleção explícita consulta usando as coordenadas do local escolhido.
   - Nova tentativa preserva a consulta ou o local da operação que falhou.
   - Respostas antigas não sobrescrevem resultados mais recentes; erros não
@@ -166,8 +171,8 @@ paralelo.
   - Mensagens visíveis são pt-BR e nenhum dado meteorológico incompleto é
     publicado como sucesso.
 - **Dependências:** T-04, T-06, T-08.
-- **Arquivos prováveis:** `src/hooks/useWeather.ts`,
-  `src/components/WeatherPage.tsx`.
+- **Arquivos prováveis:** `src/hooks/useWeather.ts`, `src/App.tsx`,
+  `src/components/states/Error.tsx`.
 - **Tipo:** UI
 - **Requisitos:** FR-01 a FR-04, FR-06, FR-07; AC-03, AC-04, AC-08, AC-09;
   NFR-04, NFR-05.
@@ -184,7 +189,8 @@ paralelo.
   - Loading, erro e ausência de dados são estados distinguíveis e acessíveis.
 - **Dependências:** T-03, T-09.
 - **Arquivos prováveis:** `src/components/CurrentWeather.tsx`,
-  `src/components/DailyForecast.tsx`, `src/components/WeatherPage.tsx`.
+  `src/components/ForecastList.tsx`, `src/components/ForecastCard.tsx`,
+  `src/App.tsx`.
 - **Tipo:** UI
 - **Requisitos:** FR-03, FR-04, FR-06, FR-07; AC-04 a AC-06, AC-08, AC-09;
   NFR-01, NFR-04.
@@ -205,7 +211,8 @@ paralelo.
 - **Dependências:** T-03, T-09, T-10.
 - **Arquivos prováveis:** `src/components/UnitToggle.tsx`,
   `src/components/CurrentWeather.tsx`,
-  `src/components/DailyForecast.tsx`, `src/hooks/useWeather.ts`.
+  `src/components/ForecastList.tsx`, `src/components/ForecastCard.tsx`,
+  `src/App.tsx`.
 - **Tipo:** UI
 - **Requisitos:** FR-05, FR-09; AC-07, AC-11; NFR-03, NFR-08.
 
@@ -240,10 +247,9 @@ paralelo.
     datas.
   - Testes cobrem exatamente cinco dias e não exibem relatório inválido.
 - **Dependências:** T-09, T-10, T-11, T-12.
-- **Arquivos prováveis:** `tests/components/SearchForm.test.tsx`,
-  `tests/components/SearchResults.test.tsx`,
-  `tests/components/WeatherPage.test.tsx`,
-  `tests/components/UnitToggle.test.tsx`.
+- **Arquivos prováveis:** `tests/unit/SearchBar.test.tsx`,
+  `tests/unit/App.test.tsx`, `tests/unit/UnitToggle.test.tsx`,
+  `tests/unit/WeatherStates.test.tsx`.
 - **Tipo:** Test
 - **Requisitos:** FR-01 a FR-08; AC-01 a AC-10; NFR-03 a NFR-05.
 

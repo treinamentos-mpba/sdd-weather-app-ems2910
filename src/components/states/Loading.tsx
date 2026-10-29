@@ -1,4 +1,8 @@
-function Loading() {
+interface LoadingProps {
+  label?: string;
+}
+
+function Loading({ label = 'Carregando previsão...' }: LoadingProps) {
   return (
     <section
       aria-busy="true"
@@ -12,11 +16,11 @@ function Loading() {
           className="h-10 w-10 animate-spin rounded-full border-2 border-white/15 border-t-accent-400 motion-reduce:animate-none"
         />
         <div>
-          <p className="font-semibold text-white">Carregando previsão...</p>
+          <p className="font-semibold text-white">{label}</p>
           <p className="mt-1 text-sm text-slate-400">Só um instante.</p>
         </div>
       </div>
-      <span className="sr-only">A previsão do tempo está sendo carregada.</span>
+      <span className="sr-only">{label}</span>
     </section>
   );
 }
