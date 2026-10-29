@@ -1,0 +1,187 @@
+# Weather App — Plano Técnico
+
+Este plano deriva de [`specs/weather-app-spec.md`](../specs/weather-app-spec.md). Ele define arquitetura e contratos para as histórias US-01 a US-04; não contém implementação final. Requisitos e critérios são referenciados pelos identificadores da spec (FR, AC e NFR).
+
+## Architecture (Overview)
+
+Aplicação de página única em React. A interface coordena busca e seleção, os serviços isolam as integrações HTTP e funções de mapeamento convertem os formatos da Open-Meteo para modelos internos validados.
+
+```text
+Usuário
+  -> WeatherPage / SearchForm / SearchResults
+       -> useWeather (estado de consulta e unidade)
+            -> geocodingService -> Open-Meteo Geocoding API
+            -> forecastService  -> Open-Meteo Forecast API
+                 -> validação e mapeamento -> modelos da aplicação
+       -> CurrentWeather / DailyForecast
+```
+
+O formulário envia uma busca explícita; o serviço de geocodificação não seleciona um resultado por conta própria. A seleção fornece coordenadas e contexto do local ao serviço de previsão. Componentes exibem os estados que o fluxo controla, sem acessar APIs diretamente. Esta separação atende FR-01 a FR-07 e facilita testes isolados (NFR-05).
+
+## Tech Stack
+
+| Tecnologia | Uso e justificativa |
+| --- | --- |
+| TypeScript strict | Contratos explícitos para modelos internos e respostas externas. |
+| React 19 + Vite 8 | UI de página única e servidor/build já configurados no projeto. |
+| Tailwind CSS 3 | Estilização responsiva, conforme a stack do repositório; os viewports de suporte ainda precisam ser definidos (NFR-02). |
+| Open-Meteo Geocoding e Forecast | Busca de localidades e dados meteorológicos sem API key, conforme NFR-07. |
+| Vitest + Testing Library | Testes unitários e de componentes integrados aos scripts existentes. |
+| Playwright | Testes E2E do fluxo principal e dos viewports a aprovar. |
+| Biome | Lint e formatação já configurados no projeto. |
+
+Não é necessário estado global ou biblioteca de cache para o escopo atual. Não há servidor próprio, autenticação ou persistência remota (FR-09). Dependências instaladas e comandos disponíveis estão definidos em `package.json`.
+
+## Project Structure
+
+Estrutura proposta para a implementação; criar somente os arquivos necessários às tarefas derivadas deste plano.
+
+```text
+src/
+  components/
+    SearchForm.tsx          # Entrada, envio e estado de busca
+    SearchResults.tsx       # Resultados selecionáveis e contexto geográfico
+    CurrentWeather.tsx      # Local selecionado e condições atuais
+    DailyForecast.tsx       # Cinco dias em ordem cronológica
+    UnitToggle.tsx          # Controle acessível °C/°F
+  hooks/
+    useWeather.ts           # Orquestra estados e ações da tela
+  services/
+    geocoding.ts            # Requisição e mapeamento de localidades
+    forecast.ts             # Requisição e validação da previsão
+  types/
+    weather.ts              # Modelos internos compartilhados
+    openMeteo.ts            # Tipos mínimos das respostas externas
+  utils/
+    weatherCode.ts          # Código WMO para rótulo em pt-BR
+    temperature.ts           # Conversão de apresentação °C/°F
+tests/
+  unit/                     # Serviços, validação e funções puras
+  components/               # Estados e interações acessíveis
+  e2e/                       # Fluxos de usuário com Playwright
+```
+
+Os testes devem seguir a organização e configuração existentes; os diretórios são uma proposta, não exigem criar uma camada adicional se a estrutura inicial do projeto indicar uma alternativa mais simples.
+
+## Data Model
+
+Modelos internos sugeridos. Os nomes de campos podem ser refinados durante as tarefas, mas os contratos devem preservar os dados necessários aos critérios de aceite.
+
+```ts
+type TemperatureUnit = "celsius" | "fahrenheit";
+
+interface City {
+  id: number;
+  name: string;
+  country: string;
+  admin1?: string;
+  latitude: number;
+  longitude: number;
+  timezone?: string;
+}
+
+interface CurrentConditions {
+  temperatureCelsius: number;
+  weatherCode: number;
+}
+
+interface DailyForecastDay {
+  date: string; // YYYY-MM-DD no fuso local do local consultado
+  weatherCode: number;
+  minimumCelsius: number;
+  maximumCelsius: number;
+}
+
+interface WeatherReport {
+  city: City;
+  timezone: string;
+  current: CurrentConditions;
+  days: [DailyForecastDay, DailyForecastDay, DailyForecastDay, DailyForecastDay, DailyForecastDay];
+}
+```
+
+Temperaturas ficam normalizadas em Celsius no modelo interno; Fahrenheit é derivado somente para apresentação, evitando divergência entre valores atuais e diários ao alternar unidade (FR-05, AC-07). O arredondamento exibido permanece pendente conforme a spec. O código WMO é preservado para mapear condições em português; não se presume que o texto da API esteja traduzido.
+
+Resultados externos são tratados como dados não confiáveis: validar presença, tipos, unidades e comprimentos dos arrays antes do mapeamento. Para formar `WeatherReport`, exigir zona horária válida, campos atuais necessários e exatamente cinco datas consecutivas com condição e mínima/máxima. Não inferir o dia local usando o fuso do navegador (AC-06, AC-09, NFR-05).
+
+## Data Flow
+
+1. O usuário envia o nome da cidade. Remover espaços externos; string vazia não chama a API (FR-01, AC-01).
+2. `geocodingService` consulta a API e mapeia cada resultado para `City`. Exibir nome e país, além de `admin1` quando disponível; manter a seleção pendente até ação explícita (FR-02, AC-02).
+3. Sem resultados, exibir estado vazio em pt-BR e conservar a possibilidade de editar a busca (AC-03).
+4. Ao selecionar uma cidade, manter o objeto selecionado e solicitar previsão usando suas coordenadas, não o texto digitado (FR-03, AC-04).
+5. Validar e mapear a resposta completa para `WeatherReport`, respeitando as datas retornadas no fuso do local. Só apresentar a previsão quando os cinco dias requeridos estiverem completos (FR-04, AC-06, AC-09).
+6. Renderizar clima atual, cidade selecionada e cinco dias. Alternar °C/°F recalcula apenas os valores apresentados; não refaz busca nem altera cidade ou datas (FR-05, AC-07).
+7. Em falha recuperável, permitir repetir a operação mantendo a consulta ou cidade selecionada; não exigir redigitação (FR-06, AC-08).
+
+Cada nova busca deve invalidar ou cancelar a resposta anterior para que um resultado atrasado não substitua a consulta mais recente. Uma mudança de unidade durante carregamento mantém a preferência atual e aplica-a aos dados quando a resposta válida chegar.
+
+## External APIs
+
+### Geocoding
+
+- Endpoint: `https://geocoding-api.open-meteo.com/v1/search`
+- Parâmetros: `name` (consulta normalizada), `count` (limite configurável), `language=pt` e `format=json`.
+- Campos usados: `id`, `name`, `country`, `admin1` quando presente, `latitude`, `longitude` e `timezone` quando presente.
+- Uma lista ausente ou vazia equivale a nenhum resultado. Região e zona horária ausentes não devem impedir a escolha da cidade; porém, zona horária ausente impede calcular datas locais com segurança e deve ser tratada no carregamento da previsão.
+
+### Forecast
+
+- Endpoint: `https://api.open-meteo.com/v1/forecast`
+- Parâmetros: `latitude`, `longitude`, `current=temperature_2m,weather_code`, `daily=weather_code,temperature_2m_max,temperature_2m_min`, `temperature_unit=celsius`, `timezone=auto` e `forecast_days=5`.
+- Campos usados: `current.temperature_2m`, `current.weather_code`, os arrays diários `time`, `weather_code`, `temperature_2m_min` e `temperature_2m_max`, além de `timezone` e metadados de unidade para validação.
+- Conferir a resposta real do provedor durante a implementação. Se `forecast_days=5` não garantir a data local atual no contexto de uma chamada específica, ajustar a solicitação com base no contrato documentado da API; o critério invariável é hoje e os quatro dias seguintes no fuso do local.
+- Traduzir `weather_code` por tabela baseada nos códigos WMO documentados. Código desconhecido deve resultar em rótulo genérico em pt-BR, não em falha de renderização.
+
+Usar timeout e mensagens de erro apropriadas quando seus valores forem definidos. A implementação deve confirmar limites de uso e obrigações de atribuição vigentes antes da publicação (NFR-07 e risco da spec). Nenhuma chave secreta é necessária.
+
+## State Management
+
+O estado vive na página por meio do hook `useWeather` e `useState`; não introduzir store global. Manter em campos separados:
+
+- texto atual da busca;
+- status e resultados da busca;
+- cidade selecionada;
+- status e relatório meteorológico;
+- unidade ativa (inicia em Celsius).
+
+Representar os estados de busca e previsão com uniões discriminadas, evitando combinações ambíguas de booleanos. Estados mínimos: `idle`, `loading`, `success`, `empty` (busca), e `error`; a previsão não possui estado `empty` equivalente, pois dados incompletos são erro de validação. Busca e previsão têm estados independentes para representar a falha de previsão após uma busca bem-sucedida sem exibir relatório parcial como completo.
+
+A unidade permanece em memória durante a sessão/navegação atual; não persistir no servidor nem em armazenamento local até a decisão em aberto ser tomada. A troca de unidade afeta apenas a formatação, sem alterar os dados normalizados ou disparar novas requisições.
+
+## Error Handling
+
+| Situação | Comportamento |
+| --- | --- |
+| Busca vazia | Não fazer requisição; manter a interface pronta para edição (AC-01). |
+| Busca sem correspondências | Mostrar mensagem em pt-BR e permitir nova busca (AC-03). |
+| Rede, timeout, HTTP ou limite na geocodificação | Mostrar erro de busca distinguível do estado vazio; ação de tentar novamente preserva o texto (FR-06, AC-08). |
+| Falha HTTP/rede ou limite no forecast | Manter cidade selecionada, não exibir previsão incompleta como válida e oferecer nova tentativa sem nova busca (AC-08). |
+| Resposta inválida, fuso ausente, dia faltante ou arrays inconsistentes | Rejeitar o relatório completo, apresentar erro recuperável e registrar detalhe técnico apenas para diagnóstico; não expor stack trace na UI (NFR-05). |
+| Código meteorológico sem mapeamento | Exibir rótulo genérico em pt-BR e manter temperaturas válidas. |
+| Resposta de consulta anterior chega após uma nova | Cancelar com `AbortController` quando possível ou ignorar por identificador de requisição. |
+
+Mensagens visíveis devem ser pt-BR, com rótulos e anúncios acessíveis. Erro de busca não deve apagar a cidade/relatório anterior sem uma decisão explícita de produto; comportamento de manter dados anteriores durante uma nova seleção precisa ser definido nas tarefas de UI. Retry reutiliza os parâmetros da operação original.
+
+## Testing Strategy
+
+- **Unitários (Vitest):** normalização de consulta; mapeamento de geocoding; validação e mapeamento das respostas; códigos WMO conhecidos e desconhecidos; conversão Celsius/Fahrenheit; datas e sequência dos cinco dias usando valores do provedor/fuso, sem depender do fuso da máquina. Cobrir respostas incompletas e inválidas (AC-01, AC-06, AC-07, AC-09; NFR-05).
+- **Serviços:** mockar `fetch` para sucesso, lista vazia, erro HTTP, falha de rede, timeout, JSON inválido e resposta com dias faltantes; verificar parâmetros e que resultados são validados antes de chegar à UI (FR-01 a FR-04, FR-06).
+- **Componentes (Testing Library):** estados loading/empty/error/success; seleção explícita por teclado e ponteiro; rótulos, foco visível e mensagens acessíveis; retry preservando a consulta/local; alternância de unidade sem alterar cidade ou datas (AC-02, AC-03, AC-07, AC-08, AC-10).
+- **E2E (Playwright):** fluxo de busca, seleção, visualização de clima/previsão, alternância de unidade e caminho de erro/retry com respostas de rede controladas. Verificar os viewports da matriz assim que aprovada; cobrir teclado e ausência de sobreposição/corte do conteúdo essencial (US-01 a US-04, AC-10, NFR-02).
+- **Comandos do projeto:** `pnpm test`, `pnpm lint` e `pnpm build`; `pnpm test:e2e` para os cenários E2E. As metas de desempenho e de acessibilidade mensurável ficam pendentes até definição dos critérios na spec.
+
+## Risks & Trade-offs
+
+| Risco ou decisão | Trade-off e resposta técnica |
+| --- | --- |
+| Cidades homônimas | Busca retorna opções em vez de selecionar automaticamente; mostrar país e região disponível e consultar pelas coordenadas do item selecionado (AC-02, AC-04). |
+| Previsão parcial ou inconsistente | Validação estrita pode negar alguns resultados do provedor, mas evita apresentar menos de cinco dias como previsão completa (AC-08, NFR-05). |
+| Fuso horário e mudança de data perto da meia-noite | Usar timezone retornado pelo forecast e suas datas locais; não depender do fuso do dispositivo. Resposta sem fuso não sustenta a garantia de datas locais (AC-06, AC-09). |
+| Conversão de temperatura no cliente | Manter Celsius como forma canônica simplifica troca imediata de unidade e evita nova requisição; arredondamento ainda precisa ser decidido. |
+| Respostas atrasadas concorrentes | Cancelamento ou descarte por identificador reduz risco de uma consulta antiga sobrescrever a atual, com pequena complexidade no hook. |
+| Dependência externa sem API key | Simplifica configuração, mas disponibilidade, limites e termos são externos; tratar falhas, definir timeout e confirmar atribuição/uso antes do lançamento (NFR-07). |
+| Viewports, países e cobertura não definidos | Não presumir compatibilidade universal. Aprovar matriz de viewports e países suportados antes de fechar testes e critérios de produção (NFR-02; perguntas em aberto da spec). |
+| Estado apenas em memória | Evita persistência não solicitada e mantém escopo simples; unidade volta a Celsius ao reiniciar a sessão. Persistência local continua uma decisão em aberto (FR-09, NFR-08). |
+| Atualização e desempenho sem metas | Plano não define cache, atualização automática, timeout numérico ou SLO sem requisitos; determinar política e metas antes de declarar prontidão de produção (NFR-06 e perguntas em aberto da spec). |
+| Acessibilidade sem padrão/meta aprovados | Teclado, semântica, rótulos e foco visível são requisitos desde a implementação; conformidade formal e metas de contraste precisam ser decididas (NFR-03). |
