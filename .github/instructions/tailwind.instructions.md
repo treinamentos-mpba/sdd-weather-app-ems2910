@@ -2,18 +2,20 @@
 applyTo: 'src/**/*.{ts,tsx,css}'
 ---
 
-# Instruções — Tailwind CSS (tema dark glassmorphism)
+# Instruções — Tailwind CSS (GeoCities kitsch)
 
-- Use utilitários do Tailwind; evite CSS inline e arquivos `.css` por componente.
-- Paleta base do tema (definida em `tailwind.config.js`):
-  - Fundo: `bg-night-900` / `bg-night-800`
-  - Cartões "glass": fundo translúcido + `backdrop-blur` + borda sutil
-    (`bg-white/5 backdrop-blur-md border border-white/10`)
-  - Destaque: `accent-500` / `accent-400`
-  - Sol/quente: `text-sun`
-- Tipografia: fonte `Inter`, hierarquia clara (hero grande para temperatura).
-- Layout responsivo mobile-first: use breakpoints `sm:`, `md:`, `lg:`.
-- A previsão de 5 dias deve usar grid responsivo
-  (`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5`).
-- Garanta contraste suficiente para acessibilidade (texto claro sobre fundo
-  escuro, estados de foco visíveis).
+- Use os tokens GeoCities definidos em `tailwind.config.js`: `geo.magenta`
+  (`#FF00A8`), `geo.cyan` (`#00E5FF`), `geo.yellow` (`#FFF000`),
+  `geo.purple` (`#7B2CFF`) e `geo.lime` (`#39FF14`). Combine ao menos quatro
+  em destaques/ornamentos sem sacrificar a legibilidade do conteúdo.
+- Prefira títulos serifados/display retrô com fallbacks locais. Use padrões
+  tiled, estrelas, listras e gradientes feitos somente em CSS.
+- Cartões e controles podem ter bordas grossas, molduras duplas ou bevel
+  exagerado; divisórias decorativas devem ser claramente não interativas.
+- Mantenha texto, labels e mensagens úteis legíveis, foco de teclado evidente,
+  ordem de tabulação lógica e layouts utilizáveis a partir de 320 px.
+- Decoração nunca pode encobrir conteúdo nem substituir semântica/estado. Todo
+  movimento é dispensável, puramente decorativo e removido sob
+  `prefers-reduced-motion`.
+- Não use imagens/assets GeoCities de terceiros, fontes remotas ou novas
+  dependências. Preserve o skip link e o comportamento dos serviços/hooks.

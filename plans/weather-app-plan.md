@@ -1,6 +1,6 @@
 # Weather App — Plano Técnico
 
-Este plano deriva de [`specs/weather-app-spec.md`](../specs/weather-app-spec.md). Ele define arquitetura e contratos para as histórias US-01 a US-04; não contém implementação final. Requisitos e critérios são referenciados pelos identificadores da spec (FR, AC e NFR).
+Este plano deriva de [`specs/weather-app-spec.md`](../specs/weather-app-spec.md). Ele define arquitetura e contratos para as histórias US-01 a US-05; não contém implementação final. Requisitos e critérios são referenciados pelos identificadores da spec (FR, AC e NFR).
 
 ## Architecture (Overview)
 
@@ -8,15 +8,16 @@ Aplicação de página única em React. A interface coordena busca e seleção, 
 
 ```text
 Usuário
-  -> App / SearchBar / SearchResults
+  -> AppShell / SearchBar / SearchResults
        -> useWeather (estado de consulta e unidade)
-            -> weatherService -> Open-Meteo Geocoding API
-            -> weatherService -> Open-Meteo Forecast API
+           -> weatherService -> Open-Meteo Geocoding API
+           -> weatherService -> Open-Meteo Forecast API
                  -> validação e mapeamento -> modelos da aplicação
-       -> CurrentWeather / ForecastList / ForecastCard
+       -> SearchResults / CurrentWeather / ForecastList / ForecastCard / UnitToggle
+            -> estilos GeoCities compartilhados (CSS/Tailwind)
 ```
 
-O formulário envia uma busca explícita; o serviço de geocodificação não seleciona um resultado por conta própria. A seleção fornece coordenadas e contexto do local ao serviço de previsão. Componentes exibem os estados que o fluxo controla, sem acessar APIs diretamente. Esta separação atende FR-01 a FR-07 e facilita testes isolados (NFR-05).
+O formulário envia uma busca explícita; o serviço de geocodificação não seleciona um resultado por conta própria. A seleção fornece coordenadas e contexto do local ao serviço de previsão. Componentes exibem os estados que o fluxo controla, sem acessar APIs diretamente. Uma camada visual compartilhada dá o tratamento GeoCities à aplicação e aos componentes sem alterar serviços, hooks, modelos ou fluxo de dados. Esta separação atende FR-01 a FR-07, US-05 e facilita testes isolados (NFR-05, NFR-09).
 
 ## Tech Stack
 
@@ -24,13 +25,19 @@ O formulário envia uma busca explícita; o serviço de geocodificação não se
 | --- | --- |
 | TypeScript strict | Contratos explícitos para modelos internos e respostas externas. |
 | React 19 + Vite 8 | UI de página única e servidor/build já configurados no projeto. |
-| Tailwind CSS 3 | Estilização responsiva, conforme a stack do repositório; os viewports de suporte ainda precisam ser definidos (NFR-02). |
+| Tailwind CSS 3 + CSS | Estilização responsiva na stack existente; CSS cobre gradientes/padrões tiled, bevel/molduras e `prefers-reduced-motion` sem bibliotecas ou imagens de terceiros (AC-12 a AC-16, NFR-09). |
 | Open-Meteo Geocoding e Forecast | Busca de localidades e dados meteorológicos sem API key, conforme NFR-07. |
 | Vitest + Testing Library | Testes unitários e de componentes integrados aos scripts existentes. |
-| Playwright | Testes E2E do fluxo principal e dos viewports a aprovar. |
+| Playwright | Testes E2E do fluxo principal em 320 px e desktop, conforme AC-15. |
 | Biome | Lint e formatação já configurados no projeto. |
 
 Não é necessário estado global ou biblioteca de cache para o escopo atual. Não há servidor próprio, autenticação ou persistência remota (FR-09). Dependências instaladas e comandos disponíveis estão definidos em `package.json`.
+
+### Direção visual
+
+Adotar a estética kitsch/GeoCities dos anos 1990 como camada de apresentação, mantendo busca, seleção explícita, dados e estados existentes. Usar as cores aprovadas pela spec — magenta `#FF00A8`, ciano `#00E5FF`, amarelo `#FFF000`, roxo `#7B2CFF` e verde-limão `#39FF14` — com pelo menos quatro em áreas de destaque, fundos ou ornamentos em todos os estados da interface, inclusive loading, vazio e erro (AC-12). Texto informativo e controles devem permanecer legíveis; não alegar conformidade formal de contraste.
+
+Títulos e chamadas usam serifada ou display retrô, com fallbacks locais, sem dependência de fonte externa. Pelo menos uma área usa padrão repetido/tiled ou gradiente em CSS; quando houver resultados ou previsão, mostrar divisória decorativa claramente visível e cartões/botões com bevel ou moldura marcada. Ornamentos devem ficar fora do caminho de leitura e não se parecer com controles. Não usar imagens de terceiros. Layouts fluem de 320 px a desktop, preservando textos, labels e controles sem corte ou sobreposição; foco e ordem lógica de teclado mantêm precedência sobre a decoração (AC-13 a AC-15, NFR-02, NFR-03, NFR-09). Animação decorativa é dispensável; se usada, reduzir/remover com `prefers-reduced-motion` e nunca codificar estado ou informação apenas por movimento (AC-16).
 
 ## Project Structure
 
@@ -39,6 +46,7 @@ Estrutura proposta para a implementação; criar somente os arquivos necessário
 ```text
 src/
   components/
+    AppShell.tsx             # Composição visual e regiões da página
     SearchBar.tsx           # Entrada, envio e estado de busca
     SearchResults.tsx       # Resultados selecionáveis e contexto geográfico
     CurrentWeather.tsx      # Local selecionado e condições atuais
@@ -57,13 +65,15 @@ src/
     weather.ts              # Modelos internos compartilhados
   utils/
     temperature.ts          # Conversão de apresentação °C/°F
+  styles/
+    visual-system.css       # Tokens de cor, tipografia, ornamentos e adaptação de movimento
 tests/
   unit/                     # Serviços, validação e funções puras
   components/               # Estados e interações acessíveis
-  e2e/                       # Fluxos de usuário com Playwright
+  e2e/                      # Fluxos e validação visual responsiva com Playwright
 ```
 
-Os testes devem seguir a organização e configuração existentes; os diretórios são uma proposta, não exigem criar uma camada adicional se a estrutura inicial do projeto indicar uma alternativa mais simples.
+`visual-system.css` é um ponto de organização para estilos comuns, não uma nova camada de runtime; pode permanecer junto à estrutura de estilos já existente. Os testes devem seguir a organização e configuração existentes; os diretórios são uma proposta, não exigem criar uma camada adicional se a estrutura inicial do projeto indicar uma alternativa mais simples.
 
 ## Data Model
 
@@ -187,7 +197,8 @@ Mensagens visíveis devem ser pt-BR, com rótulos e anúncios acessíveis. Erro 
 - **Unitários (Vitest):** normalização de consulta; mapeamento de geocoding; validação e mapeamento das respostas; códigos WMO conhecidos e desconhecidos; conversão Celsius/Fahrenheit; datas e sequência dos cinco dias usando valores do provedor/fuso, sem depender do fuso da máquina. Cobrir respostas incompletas e inválidas (AC-01, AC-06, AC-07, AC-09; NFR-05).
 - **Serviços:** mockar `fetch` para sucesso, lista vazia, erro HTTP, falha de rede, timeout, JSON inválido e resposta com dias faltantes; verificar parâmetros e que resultados são validados antes de chegar à UI (FR-01 a FR-04, FR-06).
 - **Componentes (Testing Library):** estados loading/empty/error/success; seleção explícita por teclado e ponteiro; rótulos, foco visível e mensagens acessíveis; retry preservando a consulta/local; alternância de unidade sem alterar cidade ou datas (AC-02, AC-03, AC-07, AC-08, AC-10).
-- **E2E (Playwright):** fluxo de busca, seleção, visualização de clima/previsão, alternância de unidade e caminho de erro/retry com respostas de rede controladas. Verificar os viewports da matriz assim que aprovada; cobrir teclado e ausência de sobreposição/corte do conteúdo essencial (US-01 a US-04, AC-10, NFR-02).
+- **E2E (Playwright):** fluxo de busca, seleção, visualização de clima/previsão, alternância de unidade e caminho de erro/retry com respostas de rede controladas. Executar em 320 px e desktop: verificar conteúdo essencial sem corte/sobreposição, legibilidade, labels, identificabilidade dos controles, foco visível e ordem de teclado lógica. Incluir a preferência `prefers-reduced-motion` e confirmar que animação decorativa não comunica estado (US-01 a US-05, AC-10, AC-12 a AC-16, NFR-02, NFR-03, NFR-09).
+- **Revisão visual:** inspecionar telas carregadas nos estados relevantes para confirmar presença de pelo menos quatro cores aprovadas, tipografia retrô, padrão tiled/gradiente, divisória decorativa e bevel/moldura sem interferência de uso. Revisar capturas em 320 px e desktop; não depender exclusivamente de teste por pixels (AC-12 a AC-15).
 - **Comandos do projeto:** `pnpm test`, `pnpm lint` e `pnpm build`; `pnpm test:e2e` para os cenários E2E. As metas de desempenho e de acessibilidade mensurável ficam pendentes até definição dos critérios na spec.
 
 ## Risks & Trade-offs
@@ -200,7 +211,9 @@ Mensagens visíveis devem ser pt-BR, com rótulos e anúncios acessíveis. Erro 
 | Conversão de temperatura no cliente | Manter Celsius como forma canônica simplifica troca imediata de unidade e evita nova requisição; arredondamento ainda precisa ser decidido. |
 | Respostas atrasadas concorrentes | Cancelamento ou descarte por identificador reduz risco de uma consulta antiga sobrescrever a atual, com pequena complexidade no hook. |
 | Dependência externa sem API key | Simplifica configuração, mas disponibilidade, limites e termos são externos; tratar falhas, definir timeout e confirmar atribuição/uso antes do lançamento (NFR-07). |
-| Viewports, países e cobertura não definidos | Não presumir compatibilidade universal. Aprovar matriz de viewports e países suportados antes de fechar testes e critérios de produção (NFR-02; perguntas em aberto da spec). |
+| Países e cobertura não definidos | Não presumir compatibilidade universal dos dados. Aprovar países suportados e cobertura antes de fechar critérios de produção; a validação visual deve cobrir 320 px e desktop conforme AC-15 (NFR-02 e perguntas em aberto da spec). |
 | Estado apenas em memória | Evita persistência não solicitada e mantém escopo simples; unidade volta a Celsius ao reiniciar a sessão. Persistência local continua uma decisão em aberto (FR-09, NFR-08). |
 | Atualização e desempenho sem metas | Plano não define cache, atualização automática, timeout numérico ou SLO sem requisitos; determinar política e metas antes de declarar prontidão de produção (NFR-06 e perguntas em aberto da spec). |
 | Acessibilidade sem padrão/meta aprovados | Teclado, semântica, rótulos e foco visível são requisitos desde a implementação; conformidade formal e metas de contraste precisam ser decididas (NFR-03). |
+| Estética carregada prejudica leitura ou uso móvel | Limitar ornamentos ao tratamento visual; verificar legibilidade, controles e fluxo de teclado em 320 px e desktop. A direção exige cores fortes, mas não sobrepõe conteúdo, foco ou responsividade (US-05, AC-12 a AC-16, NFR-09). |
+| Dependência de animação ou recurso externo | Preferir decoração estática CSS e fontes locais; se houver movimento, respeitar `prefers-reduced-motion`. Sem imagens de terceiros e sem nova dependência (AC-13, AC-16, NFR-09). |

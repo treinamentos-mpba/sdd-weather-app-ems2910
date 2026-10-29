@@ -5,24 +5,16 @@ interface ErrorProps {
 
 function WeatherError({ message, onRetry }: ErrorProps) {
   return (
-    <section
-      aria-labelledby="weather-error-title"
-      className="rounded-[2rem] border border-rose-300/20 bg-rose-400/[0.06] p-8 shadow-glass"
-      role="alert"
-    >
-      <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:justify-between">
+    <section aria-labelledby="weather-error-title" className="panel weather-error" role="alert">
+      <div>
         <div>
-          <p className="text-sm font-semibold text-rose-200">Não foi possível exibir os dados</p>
-          <h2 className="mt-1 text-xl font-semibold text-white" id="weather-error-title">
+          <p className="eyebrow error-kicker">Não foi possível exibir os dados</p>
+          <h2 className="state-title" id="weather-error-title">
             Algo deu errado
           </h2>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">{message}</p>
+          <p className="state-copy">{message}</p>
         </div>
-        <button
-          className="rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-400"
-          onClick={onRetry}
-          type="button"
-        >
+        <button className="geo-button error-button" onClick={onRetry} type="button">
           Tentar novamente
         </button>
       </div>

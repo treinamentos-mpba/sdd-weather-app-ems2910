@@ -270,3 +270,125 @@ paralelo.
   `playwright.config.ts`.
 - **Tipo:** Test
 - **Requisitos:** FR-01 a FR-08; AC-01 a AC-10; NFR-02 a NFR-05.
+
+## Entrega 5 — Direção visual GeoCities
+
+### T-15 — Definir o tema GeoCities e as instruções de Tailwind
+
+- **Descrição:** substituir a direção antiga de dark glassmorphism por um
+  sistema visual kitsch/GeoCities compartilhado, documentando no tema Tailwind
+  e nas instruções do workspace os tokens, utilitários e limites de uso.
+- **Critérios de aceite:**
+  - O tema nomeia as cores aprovadas `#FF00A8`, `#00E5FF`, `#FFF000`,
+    `#7B2CFF` e `#39FF14`, permitindo usar pelo menos quatro em cada estado
+    relevante sem depender de cores ou estilos de glassmorphism.
+  - As instruções orientam tipografia serifada/display com fallbacks locais,
+    padrões tiled ou gradientes, divisórias e bevel/molduras, sempre
+    subordinados à legibilidade, ao foco, ao teclado e à responsividade.
+  - As instruções proíbem imagens de terceiros e novas dependências e exigem
+    `prefers-reduced-motion` para qualquer movimento decorativo.
+- **Dependências:** T-01.
+- **Arquivos prováveis:** `tailwind.config.js`,
+  `.github/instructions/tailwind.instructions.md`,
+  `src/styles/visual-system.css`.
+- **Tipo:** Infra
+- **Requisitos:** US-05; AC-12 a AC-16; NFR-09.
+
+### T-16 — Implementar a camada CSS visual GeoCities
+
+- **Descrição:** criar os tokens e utilitários CSS compartilhados para
+  tipografia retrô, fundos tiled/gradientes, divisórias decorativas,
+  bevel/molduras e estados de foco, sem imagens externas ou bibliotecas novas.
+- **Critérios de aceite:**
+  - A camada fornece decoração estática e combinações de texto/informação
+    legíveis, sem ocultar conteúdo, labels ou estados da aplicação.
+  - Botões e cartões podem receber moldura marcada ou relevo, e existe uma
+    divisória claramente decorativa que não é confundida com controle.
+  - Qualquer animação decorativa é dispensável, não comunica estado e é
+    removida ou reduzida sob `prefers-reduced-motion`.
+  - O CSS não adiciona imagens de terceiros nem dependências ao projeto.
+- **Dependências:** T-15.
+- **Arquivos prováveis:** `src/styles/visual-system.css`, `src/index.css`,
+  `tailwind.config.js`.
+- **Tipo:** UI
+- **Requisitos:** US-05; AC-12 a AC-14, AC-16; NFR-09.
+
+### T-17 — Aplicar a camada GeoCities aos estados e componentes
+
+- **Descrição:** aplicar o sistema visual compartilhado à casca, busca,
+  resultados, clima atual, previsão, alternância de unidade e estados vazio,
+  loading e erro, preservando o fluxo e o conteúdo existentes.
+- **Critérios de aceite:**
+  - A interface usa pelo menos quatro cores saturadas aprovadas em áreas de
+    destaque, fundos ou ornamentos em todos os estados relevantes.
+  - Títulos/chamadas usam tipografia serifada ou display retrô; existe fundo
+    tiled ou gradiente, divisória decorativa e cartões/controles emoldurados.
+  - Ornamentos ficam fora do caminho de leitura, não se passam por controles e
+    não alteram a semântica, os labels ou a ordem do fluxo.
+- **Dependências:** T-08, T-09, T-10, T-11, T-16.
+- **Arquivos prováveis:** `src/App.tsx`, `src/components/*.tsx`,
+  `src/styles/visual-system.css`, `src/index.css`.
+- **Tipo:** UI
+- **Requisitos:** US-05; AC-12 a AC-14; NFR-09.
+
+### T-18 — Validar manualmente a composição responsiva e acessível
+
+- **Descrição:** revisar a camada visual aplicada durante o fluxo de busca,
+  seleção e consulta em 320 px e em viewport desktop, incluindo estados e
+  navegação exclusivamente por teclado.
+- **Critérios de aceite:**
+  - Em 320 px e desktop, não há conteúdo essencial cortado ou sobreposto; os
+    textos, labels, controles e quatro cores saturadas permanecem legíveis e
+    identificáveis.
+  - Tabulação, seleção e ativação funcionam sem ponteiro, com ordem lógica e
+    foco visível preservado apesar dos ornamentos e molduras.
+  - Com `prefers-reduced-motion` ativo, nenhuma animação decorativa permanece
+    necessária nem transmite informação ou estado.
+  - A revisão registra os viewports usados e corrige qualquer conflito entre
+    decoração, leitura, foco e operação antes de aprovar a direção visual.
+- **Dependências:** T-12, T-17.
+- **Arquivos prováveis:** `src/components/*.tsx`, `src/index.css`,
+  `src/styles/visual-system.css`, `playwright.config.ts`.
+- **Tipo:** Test
+- **Requisitos:** US-05; AC-12 a AC-16; NFR-02, NFR-03, NFR-04, NFR-09.
+
+### T-19 — Automatizar a validação visual e de movimento
+
+- **Descrição:** ampliar os testes de componente e E2E para verificar a
+  direção GeoCities nos estados relevantes e o fluxo responsivo/acessível,
+  combinando assertions de estrutura, estilos, teclado e viewport em vez de
+  depender apenas de comparação de pixels.
+- **Critérios de aceite:**
+  - Os cenários executam em 320 px e desktop e verificam ausência de corte ou
+    sobreposição, legibilidade, identificação dos controles, foco visível e
+    ordem de teclado.
+  - Os estados carregado, vazio, loading e erro verificam pelo menos quatro
+    cores da paleta, tipografia retrô, fundo tiled/gradiente, divisória e
+    bevel/moldura sem substituir conteúdo informativo.
+  - Um cenário com `prefers-reduced-motion` confirma que movimento decorativo é
+    removido/reduzido e que nenhum estado depende dele.
+  - A validação não requer imagens de terceiros nem instalação de dependência.
+- **Dependências:** T-13, T-14, T-18.
+- **Arquivos prováveis:** `tests/components/*.test.tsx`,
+  `tests/e2e/weather-flow.spec.ts`, `playwright.config.ts`.
+- **Tipo:** Test
+- **Requisitos:** US-05; AC-12 a AC-16; NFR-02, NFR-03, NFR-04, NFR-09.
+
+### T-20 — Consolidar a revisão da direção visual aprovada
+
+- **Descrição:** executar a revisão final da implementação GeoCities e
+  confirmar que tema, CSS, instruções do workspace e validações permanecem
+  alinhados à spec, sem reintroduzir dark glassmorphism.
+- **Critérios de aceite:**
+  - `pnpm lint`, `pnpm test` e `pnpm build` passam após a atualização visual.
+  - A revisão confirma a presença dos quatro requisitos visuais principais,
+    uso em 320 px e desktop, foco/teclado, legibilidade, ausência de
+    corte/sobreposição e comportamento de movimento reduzido.
+  - Nenhum arquivo de spec, plano ou código é alterado por esta tarefa de
+    planejamento.
+- **Dependências:** T-18, T-19.
+- **Arquivos prováveis:** `tasks/weather-app-tasks.md`,
+  `src/styles/visual-system.css`, `.github/instructions/tailwind.instructions.md`,
+  `tests/e2e/weather-flow.spec.ts`.
+- **Tipo:** Test
+- **Requisitos:** US-05; AC-12 a AC-16; NFR-02, NFR-03, NFR-04, NFR-09.

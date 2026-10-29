@@ -4,27 +4,20 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Dark glassmorphism palette (WeatherView reference)
-        night: {
-          900: '#0b1020',
-          800: '#11162a',
-          700: '#1a2138',
+        geo: {
+          magenta: '#FF00A8',
+          cyan: '#00E5FF',
+          yellow: '#FFF000',
+          purple: '#7B2CFF',
+          lime: '#39FF14',
         },
-        accent: {
-          400: '#8b9bff',
-          500: '#6d7cff',
-          600: '#5a67ec',
-        },
-        sun: '#f5b942',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-      },
-      backdropBlur: {
-        xs: '2px',
+        sans: ['Arial', 'Helvetica', 'sans-serif'],
+        retro: ['Georgia', 'Times New Roman', 'serif'],
       },
       boxShadow: {
-        glass: '0 8px 32px rgba(0, 0, 0, 0.37)',
+        bevel: 'inset 2px 2px 0 #fff, inset -3px -3px 0 #54209f, 4px 5px 0 #25113e',
       },
     },
   },

@@ -24,19 +24,19 @@ function ForecastCard({ day, unit }: ForecastCardProps) {
   return (
     <article
       aria-label={`${accessibleDate}: ${day.condition.label}, mínima ${formatTemperature(day.minimumCelsius, unit)}, máxima ${formatTemperature(day.maximumCelsius, unit)}`}
-      className="flex min-h-52 min-w-0 flex-col items-center rounded-2xl border border-white/10 bg-white/[0.045] p-3 text-center transition hover:-translate-y-1 hover:border-accent-400/40 hover:bg-white/[0.075] motion-reduce:transform-none motion-reduce:transition-none sm:p-5"
+      className="forecast-card"
     >
-      <time className="text-sm font-medium capitalize text-slate-300" dateTime={day.date}>
+      <time className="forecast-date" dateTime={day.date}>
         {shortDate.replace('.', '')}
       </time>
       <WeatherIcon
-        className={`my-4 h-12 w-12 ${day.condition.icon === 'sun' ? 'text-sun' : 'text-accent-400'}`}
+        className={`my-4 h-12 w-12 ${day.condition.icon === 'sun' ? 'text-geo-magenta' : 'text-geo-purple'}`}
         name={day.condition.icon}
       />
-      <p className="min-h-10 text-sm text-slate-400">{day.condition.label}</p>
-      <div className="mt-auto flex w-full items-center justify-center gap-3 pt-3 text-sm font-semibold">
-        <span className="text-white">{formatTemperature(day.maximumCelsius, unit)}</span>
-        <span className="text-slate-400">{formatTemperature(day.minimumCelsius, unit)}</span>
+      <p className="forecast-condition">{day.condition.label}</p>
+      <div className="forecast-temperatures">
+        <span className="forecast-max">{formatTemperature(day.maximumCelsius, unit)}</span>
+        <span className="forecast-min">{formatTemperature(day.minimumCelsius, unit)}</span>
       </div>
     </article>
   );
