@@ -1,4 +1,4 @@
-import type { TemperatureUnit, WeatherMetrics } from '../types/weather';
+import type { CurrentConditions, TemperatureUnit } from '../types/weather';
 import { formatTemperature } from '../utils/temperature';
 import WeatherIcon from './WeatherIcon';
 
@@ -8,38 +8,16 @@ interface CurrentWeatherProps {
     region?: string;
     country: string;
   };
-  current: WeatherMetrics;
+  current: CurrentConditions;
   unit: TemperatureUnit;
 }
 
 function CurrentWeather({ city, current, unit }: CurrentWeatherProps) {
-  const metrics = [
-    {
-      label: 'Umidade',
-      value: `${current.humidityPercent}%`,
-      icon: '💧',
-    },
-    {
-      label: 'Vento',
-      value: `${current.windKmh} km/h`,
-      icon: '↗',
-    },
-    {
-      label: 'Precipitação',
-      value: `${current.precipitationMm} mm`,
-      icon: '☂',
-    },
-    {
-      label: 'Pressão',
-      value: `${current.pressureHpa} hPa`,
-      icon: '◉',
-    },
-  ];
   const location = [city.region, city.country].filter(Boolean).join(', ');
 
   return (
     <section aria-labelledby="current-weather-title" className="current-card">
-      <div className="current-layout">
+      <div>
         <div>
           <p className="weather-kicker">
             <span aria-hidden="true">☀</span> Clima agora
@@ -62,20 +40,6 @@ function CurrentWeather({ city, current, unit }: CurrentWeatherProps) {
             </div>
           </div>
         </div>
-
-        <dl className="metrics-grid">
-          {metrics.map((metric) => (
-            <div className="metric-cell" key={metric.label}>
-              <dt className="metric-label">
-                <span aria-hidden="true" className="metric-icon">
-                  {metric.icon}
-                </span>
-                {metric.label}
-              </dt>
-              <dd className="metric-value">{metric.value}</dd>
-            </div>
-          ))}
-        </dl>
       </div>
     </section>
   );

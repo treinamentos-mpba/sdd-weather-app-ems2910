@@ -20,19 +20,11 @@ function forecastResponse(): Record<string, unknown> {
     timezone: 'America/Sao_Paulo',
     current: {
       temperature_2m: 22.5,
-      relative_humidity_2m: 64,
       weather_code: 2,
-      wind_speed_10m: 11,
-      precipitation: 0.1,
-      pressure_msl: 1012,
     },
     current_units: {
       temperature_2m: '°C',
-      relative_humidity_2m: '%',
       weather_code: 'wmo code',
-      wind_speed_10m: 'km/h',
-      precipitation: 'mm',
-      pressure_msl: 'hPa',
     },
     daily: {
       time: ['2026-10-29', '2026-10-30', '2026-10-31', '2026-11-01', '2026-11-02'],
@@ -167,10 +159,9 @@ describe('Open-Meteo forecast', () => {
     expect(params.get('latitude')).toBe(String(cityFixture.latitude));
     expect(params.get('longitude')).toBe(String(cityFixture.longitude));
     expect(params.get('temperature_unit')).toBe('celsius');
-    expect(params.get('wind_speed_unit')).toBe('kmh');
     expect(params.get('forecast_days')).toBe('5');
     expect(params.get('timezone')).toBe('auto');
-    expect(params.get('current')).toContain('relative_humidity_2m');
+    expect(params.get('current')).toBe('temperature_2m,weather_code');
     expect(params.get('daily')).toContain('temperature_2m_min');
     expect(data.city).toBe(cityFixture);
     expect(data.timezone).toBe('America/Sao_Paulo');
@@ -211,10 +202,7 @@ describe('Open-Meteo forecast', () => {
         (payload.current as Record<string, unknown>).temperature_2m = null;
       },
       (payload) => {
-        delete (payload.current as Record<string, unknown>).relative_humidity_2m;
-      },
-      (payload) => {
-        (payload.current as Record<string, unknown>).wind_speed_10m = -1;
+        (payload.current as Record<string, unknown>).weather_code = null;
       },
       (payload) => {
         (payload.daily as Record<string, unknown>).time = [

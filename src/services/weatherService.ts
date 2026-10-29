@@ -23,16 +23,11 @@ export class WeatherServiceError extends Error {
 
 function isAbortError(error: unknown): boolean {
   return (
-    typeof error === 'object' &&
-    error !== null &&
-    'name' in error &&
-    error.name === 'AbortError'
+    typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
   );
 }
 
-async function withRequestTimeout<T>(
-  request: (signal: AbortSignal) => Promise<T>,
-): Promise<T> {
+async function withRequestTimeout<T>(request: (signal: AbortSignal) => Promise<T>): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -189,33 +184,15 @@ function mapForecast(response: unknown, city: City): WeatherData {
   const daily = response.daily;
   const dailyUnits = isRecord(response.daily_units) ? response.daily_units : null;
   const temperature = current.temperature_2m;
-  const humidity = current.relative_humidity_2m;
   const weatherCode = current.weather_code;
-  const windSpeed = current.wind_speed_10m;
-  const precipitation = current.precipitation;
-  const pressure = current.pressure_msl;
   if (
     typeof response.timezone !== 'string' ||
     !response.timezone ||
     !currentUnits ||
     currentUnits.temperature_2m !== '°C' ||
-    currentUnits.relative_humidity_2m !== '%' ||
     currentUnits.weather_code !== 'wmo code' ||
-    currentUnits.wind_speed_10m !== 'km/h' ||
-    currentUnits.precipitation !== 'mm' ||
-    currentUnits.pressure_msl !== 'hPa' ||
     !requiredNumber(temperature) ||
-    !requiredNumber(humidity) ||
     !requiredNumber(weatherCode) ||
-    !requiredNumber(windSpeed) ||
-    !requiredNumber(precipitation) ||
-    !requiredNumber(pressure) ||
-    windSpeed < 0 ||
-    precipitation < 0 ||
-    pressure <= 0 ||
-    !Number.isInteger(humidity) ||
-    humidity < 0 ||
-    humidity > 100 ||
     !Number.isInteger(weatherCode)
   ) {
     throw new WeatherServiceError('Os dados atuais recebidos estão incompletos ou incompatíveis.');
@@ -264,10 +241,6 @@ function mapForecast(response: unknown, city: City): WeatherData {
     current: {
       temperatureCelsius: temperature,
       condition: mapWeatherCode(weatherCode),
-      humidityPercent: humidity,
-      windKmh: windSpeed,
-      precipitationMm: precipitation,
-      pressureHpa: pressure,
     },
     forecast,
   };
@@ -277,12 +250,9 @@ export async function getWeather(city: City): Promise<WeatherData> {
   const params = new URLSearchParams({
     latitude: String(city.latitude),
     longitude: String(city.longitude),
-    current:
-      'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation,pressure_msl',
+    current: 'temperature_2m,weather_code',
     daily: 'weather_code,temperature_2m_max,temperature_2m_min',
     temperature_unit: 'celsius',
-    wind_speed_unit: 'kmh',
-    precipitation_unit: 'mm',
     forecast_days: '5',
     timezone: 'auto',
   });

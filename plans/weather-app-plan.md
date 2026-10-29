@@ -100,10 +100,6 @@ interface WeatherCondition {
 interface CurrentConditions {
   temperatureCelsius: number;
   condition: WeatherCondition;
-  humidityPercent: number;
-  windKmh: number;
-  precipitationMm: number;
-  pressureHpa: number;
 }
 
 interface DailyForecastDay {
@@ -163,8 +159,8 @@ Cada nova busca deve invalidar ou cancelar a resposta anterior para que um resul
 ### Forecast
 
 - Endpoint: `https://api.open-meteo.com/v1/forecast`
-- Parâmetros: `latitude`, `longitude`, `current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation,pressure_msl`, `daily=weather_code,temperature_2m_max,temperature_2m_min`, `temperature_unit=celsius`, `wind_speed_unit=kmh`, `precipitation_unit=mm`, `timezone=auto` e `forecast_days=5`.
-- Campos usados: valores atuais de temperatura, umidade, código meteorológico, vento, precipitação e pressão; arrays diários `time`, `weather_code`, `temperature_2m_min` e `temperature_2m_max`, além de `timezone` e metadados de unidade para validação.
+- Parâmetros: `latitude`, `longitude`, `current=temperature_2m,weather_code`, `daily=weather_code,temperature_2m_max,temperature_2m_min`, `temperature_unit=celsius`, `timezone=auto` e `forecast_days=5`.
+- Campos usados: temperatura e código meteorológico atuais; arrays diários `time`, `weather_code`, `temperature_2m_min` e `temperature_2m_max`, além de `timezone` e metadados de unidade para validação.
 - Conferir a resposta real do provedor durante a implementação. Se `forecast_days=5` não garantir a data local atual no contexto de uma chamada específica, ajustar a solicitação com base no contrato documentado da API; o critério invariável é hoje e os quatro dias seguintes no fuso do local.
 - Traduzir `weather_code` por tabela baseada nos códigos WMO documentados. Código desconhecido deve resultar em rótulo genérico em pt-BR, não em falha de renderização.
 

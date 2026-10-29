@@ -457,11 +457,6 @@ button {
   background: linear-gradient(120deg, rgb(0 229 255 / 28%), transparent 48%), var(--paper);
 }
 
-.current-layout {
-  display: grid;
-  gap: 24px;
-}
-
 .weather-kicker {
   margin: 0 0 7px;
   color: #71004b;
@@ -512,41 +507,6 @@ button {
   color: #38264a;
   font-size: 1rem;
   font-weight: 700;
-}
-
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px;
-}
-
-.metric-cell {
-  min-width: 0;
-  padding: 10px;
-  border: 3px ridge var(--geo-magenta);
-  background: var(--geo-yellow);
-}
-
-.metric-label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: #392451;
-  font-size: 0.8rem;
-  overflow-wrap: anywhere;
-}
-
-.metric-icon {
-  color: #71004b;
-  font-size: 1rem;
-}
-
-.metric-value {
-  margin: 8px 0 0;
-  color: #24123b;
-  font-size: clamp(1rem, 4vw, 1.35rem);
-  font-weight: 900;
-  overflow-wrap: anywhere;
 }
 
 .forecast-section {
@@ -681,18 +641,9 @@ button {
     min-height: 210px;
     padding: 16px 12px;
   }
-
-  .metrics-grid {
-    gap: 12px;
-  }
 }
 
 @media (min-width: 900px) {
-  .current-layout {
-    grid-template-columns: 1.15fr 0.85fr;
-    align-items: center;
-  }
-
   .forecast-grid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }

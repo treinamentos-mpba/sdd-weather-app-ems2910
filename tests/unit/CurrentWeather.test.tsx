@@ -4,7 +4,7 @@ import CurrentWeather from '../../src/components/CurrentWeather';
 import { weatherFixture } from '../fixtures/weather';
 
 describe('CurrentWeather', () => {
-  it('shows location, current conditions, and all weather metrics', () => {
+  it('shows the location, current temperature, and condition', () => {
     render(
       <CurrentWeather city={weatherFixture.city} current={weatherFixture.current} unit="celsius" />,
     );
@@ -13,10 +13,8 @@ describe('CurrentWeather', () => {
     expect(screen.getByText('São Paulo, Brasil')).toBeInTheDocument();
     expect(screen.getByText('24°C')).toBeInTheDocument();
     expect(screen.getByText('Parcialmente nublado')).toBeInTheDocument();
-    expect(screen.getByText('68%')).toBeInTheDocument();
-    expect(screen.getByText('12 km/h')).toBeInTheDocument();
-    expect(screen.getByText('0.4 mm')).toBeInTheDocument();
-    expect(screen.getByText('1014 hPa')).toBeInTheDocument();
+    expect(screen.queryByText('Umidade')).not.toBeInTheDocument();
+    expect(screen.queryByText('Vento')).not.toBeInTheDocument();
   });
 
   it('converts the current temperature to Fahrenheit', () => {

@@ -105,8 +105,7 @@ paralelo.
   validar os dados antes de produzir um relatório interno.
 - **Critérios de aceite:**
   - A requisição usa coordenadas, temperatura em Celsius, `timezone=auto` e
-    cinco dias; solicita temperatura, condição, umidade, vento, precipitação e
-    pressão atuais, além dos campos diários.
+    cinco dias; solicita temperatura e condição atuais, além dos campos diários.
   - O serviço exige dados atuais válidos, fuso válido e cinco datas locais
     consecutivas com condição, mínima e máxima.
   - Respostas incompletas, arrays inconsistentes, unidades incompatíveis,
