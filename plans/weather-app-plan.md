@@ -106,13 +106,27 @@ Resultados externos são tratados como dados não confiáveis: validar presença
 
 ## Data Flow
 
-1. O usuário envia o nome da cidade. Remover espaços externos; string vazia não chama a API (FR-01, AC-01).
-2. `geocodingService` consulta a API e mapeia cada resultado para `City`. Exibir nome e país, além de `admin1` quando disponível; manter a seleção pendente até ação explícita (FR-02, AC-02).
-3. Sem resultados, exibir estado vazio em pt-BR e conservar a possibilidade de editar a busca (AC-03).
-4. Ao selecionar uma cidade, manter o objeto selecionado e solicitar previsão usando suas coordenadas, não o texto digitado (FR-03, AC-04).
-5. Validar e mapear a resposta completa para `WeatherReport`, respeitando as datas retornadas no fuso do local. Só apresentar a previsão quando os cinco dias requeridos estiverem completos (FR-04, AC-06, AC-09).
-6. Renderizar clima atual, cidade selecionada e cinco dias. Alternar °C/°F recalcula apenas os valores apresentados; não refaz busca nem altera cidade ou datas (FR-05, AC-07).
-7. Em falha recuperável, permitir repetir a operação mantendo a consulta ou cidade selecionada; não exigir redigitação (FR-06, AC-08).
+```mermaid
+flowchart TD
+  User[Usuario] -->|Envia consulta| UI[UI: formulario e resultados]
+  UI -->|onSearch: consulta normalizada| Hook[useWeather: atualiza estado]
+  Hook -->|Busca cidade| GeoService[geocodingService]
+  GeoService -->|GET geocoding| GeoAPI[Open-Meteo Geocoding]
+  GeoAPI -->|Resultados| GeoService
+  GeoService -->|City: sucesso, vazio ou erro| Hook
+  Hook -->|Estado de busca| UI
+  UI -->|Selecao explicita de City| Hook
+  Hook -->|Coordenadas da cidade| ForecastService[forecastService]
+  ForecastService -->|GET forecast| ForecastAPI[Open-Meteo Forecast]
+  ForecastAPI -->|Resposta| ForecastService
+  ForecastService -->|Valida e mapeia WeatherReport| Hook
+  ForecastService -->|Erro ou dados incompletos| Hook
+  Hook -->|Estado meteorologico| UI
+  UI -->|Retry preserva consulta ou cidade| Hook
+  UI -->|Alterna unidade| Hook
+```
+
+A UI envia a consulta ao hook; `useWeather` controla loading, sucesso, vazio e erro enquanto os serviços isolam as chamadas HTTP. Resultados de geocodificação são exibidos sem seleção automática. Após a escolha explícita, a previsão usa as coordenadas da cidade selecionada. O hook só publica um `WeatherReport` após validar os dados e os cinco dias locais; a UI apresenta temperatura, condição e estados de retry em pt-BR. A unidade altera apenas a apresentação, sem refazer a busca nem mudar local ou datas (FR-01 a FR-06, AC-01 a AC-09).
 
 Cada nova busca deve invalidar ou cancelar a resposta anterior para que um resultado atrasado não substitua a consulta mais recente. Uma mudança de unidade durante carregamento mantém a preferência atual e aplica-a aos dados quando a resposta válida chegar.
 
