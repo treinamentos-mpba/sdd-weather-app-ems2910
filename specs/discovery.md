@@ -2,6 +2,12 @@
 
 A proposta é desenvolver uma aplicação de previsão do tempo que permita ao usuário consultar as condições meteorológicas de uma cidade. A experiência deve apresentar o clima atual e a previsão para os próximos cinco dias, oferecer alternância entre Celsius e Fahrenheit e funcionar bem em dispositivos móveis.
 
+## Personas
+
+- **Pessoa que planeja a rotina diária:** consulta o clima atual para decidir o que vestir e como se preparar para o dia.
+- **Viajante que planeja a semana:** busca a cidade de destino e consulta a previsão de cinco dias para organizar a viagem e a bagagem.
+- **Pessoa com preferência por uma unidade específica:** alterna entre Celsius e Fahrenheit para interpretar a temperatura na escala que usa com mais familiaridade.
+
 ## Suposições
 
 As suposições abaixo são provisórias e devem ser confirmadas antes de orientar decisões de implementação:
